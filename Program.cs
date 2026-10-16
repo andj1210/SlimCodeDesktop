@@ -13,6 +13,7 @@ class Program
       // below writes to -- hangs off the profile selected here.
       AppPaths.Initialize(args);
       CrashLog.Install();
+      UpdateInstaller.CleanupLeftoversInBackground(UpdateInstaller.InstallDir);
       try
       {
          BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -25,6 +26,9 @@ class Program
          CrashLog.Write("Main", ex);
          throw;
       }
+
+      // After a self-update: the UI is fully down, start the new version.
+      UpdateInstaller.RelaunchIfPending();
    }
 
    public static AppBuilder BuildAvaloniaApp()

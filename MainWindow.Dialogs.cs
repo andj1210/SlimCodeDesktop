@@ -150,7 +150,8 @@ public partial class MainWindow
       {
          Title = title,
          Width = 400,
-         Height = 160,
+         // Height-fitted so longer messages (e.g. the update warning) are not clipped.
+         SizeToContent = SizeToContent.Height,
          WindowStartupLocation = WindowStartupLocation.CenterOwner,
          CanResize = false,
          Background = ThemeBrushes.PanelBackground,

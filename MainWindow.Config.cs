@@ -135,6 +135,8 @@ public partial class MainWindow
       panel.Children.Add(AboutRow("License",   AppInfo.License));
       panel.Children.Add(AboutRow("Author",    AppInfo.Author));
 
+      panel.Children.Add(BuildUpdateSection());
+
       panel.Children.Add(new TextBlock
       {
          Text       = "Copyright © 2026 " + AppInfo.Author,
