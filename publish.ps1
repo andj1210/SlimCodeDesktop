@@ -6,14 +6,11 @@
 
 .DESCRIPTION
     Reads {version} from the <Version> element of SlimCodeDesktop.csproj and
-    produces, per runtime identifier, two portable archives in the dist\ folder:
+    produces, per runtime identifier, one portable archive in the dist\ folder:
 
       slimcode_desktop_v{version}_{rid}.{zip|tar.gz}
-          Self-contained: bundles the .NET runtime. Runs on any machine, larger.
-
-      slimcode_desktop_v{version}_{rid}_minimal.{zip|tar.gz}
-          Framework-dependent: no runtime bundled. Much smaller, but the target
-          machine must have the matching .NET runtime installed.
+          Self-contained: bundles the .NET runtime, so it runs on any machine
+          without a .NET installation.
 
     Publishing every target here is deliberate, and is the project's guard
     against silent platform drift. Exactly one Platform\Platform.<OS>.cs is
@@ -105,34 +102,31 @@ if (-not (Test-Path $distDir)) {
 
 $artifacts = New-Object System.Collections.Generic.List[string]
 
-# Publishes a folder-based build and archives it into dist\. Throws on failure.
+# Publishes a self-contained, folder-based build and archives it into dist\.
+# Throws on failure.
 function Invoke-PublishArchive {
     param(
         [Parameter(Mandatory)][string]$Runtime,
-        [Parameter(Mandatory)][string]$TargetOS,
-        [Parameter(Mandatory)][bool]$SelfContained,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$Suffix,   # e.g. "" or "_minimal"
-        [Parameter(Mandatory)][string]$Label
+        [Parameter(Mandatory)][string]$TargetOS
     )
 
-    if ($SelfContained) { $stageName = "publish-selfcontained" } else { $stageName = "publish-minimal" }
-    $publishDir = Join-Path $PSScriptRoot "bin\$Configuration\net10.0\$Runtime\$stageName"
+    $publishDir = Join-Path $PSScriptRoot "bin\$Configuration\net10.0\$Runtime\publish-selfcontained"
 
     if (Test-Path $publishDir) {
         Remove-Item -LiteralPath $publishDir -Recurse -Force
     }
 
-    Write-Host "Publishing $Runtime ($Label)..." -ForegroundColor Cyan
+    Write-Host "Publishing $Runtime (self-contained)..." -ForegroundColor Cyan
     dotnet publish $projectFile `
         -c $Configuration `
         -r $Runtime `
         -p:TargetOS=$TargetOS `
-        --self-contained $($SelfContained.ToString().ToLower()) `
+        --self-contained true `
         -p:DebugType=none `
         -p:DebugSymbols=false `
         -o $publishDir
     if ($LASTEXITCODE -ne 0) {
-        throw "dotnet publish $Runtime ($Label) failed with exit code $LASTEXITCODE"
+        throw "dotnet publish $Runtime failed with exit code $LASTEXITCODE"
     }
 
     # Strip debug symbols. -p:DebugType=none drops our managed .pdb, but native
@@ -146,7 +140,7 @@ function Invoke-PublishArchive {
 
     # tar.gz for Linux (what the platform expects), zip for Windows.
     if ($TargetOS -eq "Linux") { $ext = "tar.gz" } else { $ext = "zip" }
-    $archiveName = "slimcode_desktop_v${version}_${Runtime}${Suffix}.${ext}"
+    $archiveName = "slimcode_desktop_v${version}_${Runtime}.${ext}"
     $archivePath = Join-Path $distDir $archiveName
     if (Test-Path $archivePath) {
         Remove-Item -LiteralPath $archivePath -Force
@@ -165,7 +159,7 @@ function Invoke-PublishArchive {
         }
         else {
             Write-Host "  tar not found -- falling back to .zip" -ForegroundColor Yellow
-            $archiveName = "slimcode_desktop_v${version}_${Runtime}${Suffix}.zip"
+            $archiveName = "slimcode_desktop_v${version}_${Runtime}.zip"
             $archivePath = Join-Path $distDir $archiveName
             Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $archivePath -Force
         }
@@ -217,14 +211,7 @@ foreach ($rid in $Runtimes) {
     if ($targetOs -eq "Linux") { $anyLinux = $true }
 
     Write-Host "=== $rid  (TargetOS=$targetOs) ===" -ForegroundColor Magenta
-
-    # Self-contained: bundles the .NET runtime, runs anywhere.
-    Invoke-PublishArchive -Runtime $rid -TargetOS $targetOs `
-        -SelfContained $true  -Suffix ""         -Label "self-contained"
-
-    # Minimal: framework-dependent, requires the .NET runtime on the target.
-    Invoke-PublishArchive -Runtime $rid -TargetOS $targetOs `
-        -SelfContained $false -Suffix "_minimal" -Label "minimal / framework-dependent"
+    Invoke-PublishArchive -Runtime $rid -TargetOS $targetOs
 }
 
 Write-Host "Done. Artifacts written to $distDir" -ForegroundColor Green

@@ -1,0 +1,182 @@
+# Builds SlimCode Desktop and publishes a GitHub release.
+#
+# Manual only: start it from the Actions tab ("Run workflow") or with
+#   gh workflow run release.yml [-f draft=false] [-f prerelease=true]
+#
+# The version is taken from <Version> in SlimCodeDesktop.csproj and becomes the
+# tag v{version}. Bump it, commit, push to main, then run this workflow. A run
+# whose tag or release already exists fails before anything is built.
+#
+# Jobs:
+#   prepare      -- ref guard, version read, duplicate-release check
+#   build        -- Windows runner: publish.bat (Windows tests + all archives)
+#   test-linux   -- Ubuntu runner: the Linux unit tests a Windows host can't run
+#   release      -- Ubuntu runner: restore the Linux exec bit, checksums, release
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: Create the release as a draft (publish it by hand on GitHub)
+        type: boolean
+        default: true
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Never run two releases at once; a second run waits for the first.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    # Write access only so the release listing below includes drafts.
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Releases are cut from main only (selected: $GITHUB_REF)."
+          exit 1
+
+      - uses: actions/checkout@v7
+
+      - name: Read version from csproj
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content -LiteralPath SlimCodeDesktop.csproj
+          $version = ($csproj.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($version)) {
+              throw "Could not find a <Version> element in SlimCodeDesktop.csproj"
+          }
+          $version = $version.Trim()
+          Write-Host "Version: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      # Drafts have no git tag yet, so check the release list as well as tags.
+      - name: Refuse an existing tag or release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "::error::Tag $TAG already exists -- bump <Version> in SlimCodeDesktop.csproj."
+            exit 1
+          fi
+          releases="$(gh release list --limit 1000 --json tagName --jq '.[].tagName')"
+          if grep -Fxq "$TAG" <<< "$releases"; then
+            echo "::error::A release (possibly a draft) for $TAG already exists -- bump <Version> or delete it."
+            exit 1
+          fi
+
+  build:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # nuget.config keeps the package cache project-local in packages\.
+      - uses: actions/cache@v6
+        with:
+          path: packages
+          key: nuget-windows-${{ hashFiles('SlimCodeDesktop.csproj', 'Tests/**/*.csproj', 'nuget.config') }}
+          restore-keys: nuget-windows-
+
+      - name: Publish (tests + archives)
+        shell: cmd
+        run: publish.bat
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  test-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/cache@v6
+        with:
+          path: packages
+          key: nuget-linux-${{ hashFiles('SlimCodeDesktop.csproj', 'Tests/**/*.csproj', 'nuget.config') }}
+          restore-keys: nuget-linux-
+
+      - name: Unit tests (TargetOS=Linux)
+        run: dotnet test Tests/SlimCodeDesktop.Tests/SlimCodeDesktop.Tests.csproj -c Release -p:TargetOS=Linux
+
+  release:
+    needs: [prepare, build, test-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      # The tarball was written on Windows, which has no exec bit to record.
+      # Repack it with the bit set on the executables; the binaries are unchanged.
+      - name: Restore exec bit in the Linux archive
+        run: |
+          archive="dist/slimcode_desktop_v${VERSION}_linux-x64.tar.gz"
+          test -f "$archive" || { echo "::error::Missing $archive"; exit 1; }
+          stage="$(mktemp -d)"
+          tar -xzf "$archive" -C "$stage"
+          test -f "$stage/SlimCodeDesktop" || { echo "::error::SlimCodeDesktop not found in $archive"; exit 1; }
+          chmod +x "$stage/SlimCodeDesktop"
+          if [ -f "$stage/createdump" ]; then chmod +x "$stage/createdump"; fi
+          tar -czf "$archive" --owner=0 --group=0 --numeric-owner -C "$stage" .
+          tar -tvzf "$archive" | grep -E ' \./(SlimCodeDesktop|createdump)$'
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum slimcode_desktop_* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$DRAFT" = "true" ]; then flags+=(--draft); fi
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "v${VERSION}" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "SlimCode Desktop v${VERSION}" \
+            --generate-notes \
+            "${flags[@]}"

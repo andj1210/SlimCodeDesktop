@@ -248,14 +248,36 @@ editing `Platform/`, rather than finding out at release time.
 ### Packaging
 
 ```pwsh
-.\publish.ps1                     # win-x64 + linux-x64, self-contained + minimal
+.\publish.ps1                     # win-x64 + linux-x64, self-contained
 .\publish.ps1 -Runtimes win-x64   # Windows only, skips the Linux drift check
 ```
 
-Artifacts land in `dist\` as `slimcode_desktop_v{version}_{rid}[_minimal].{zip|tar.gz}`.
+Artifacts land in `dist\` as `slimcode_desktop_v{version}_{rid}.{zip|tar.gz}`.
 Linux builds are packaged as `.tar.gz`. Because they're produced on Windows,
-whose filesystem has no executable bit to record, the binary needs a
+whose filesystem has no executable bit to record, a locally built binary needs a
 `chmod +x SlimCodeDesktop` after extraction. The script prints this reminder.
+Archives from a GitHub release already have the bit set (see below).
+
+### Releasing
+
+Releases are cut by the **Release** workflow
+([.github/workflows/release.yml](.github/workflows/release.yml)). It never runs
+on its own; start it by hand from the Actions tab or with:
+
+```pwsh
+gh workflow run release.yml              # draft release (default)
+gh workflow run release.yml -f draft=false -f prerelease=true
+```
+
+1. Bump `<Version>` in `SlimCodeDesktop.csproj`, commit, push to `main`.
+2. Run the workflow. It refuses any ref other than `main`, and fails early if
+   the tag `v{version}` already exists, so a forgotten bump can't overwrite a
+   release.
+3. A Windows runner executes `publish.ps1` (Windows tests + both archives); an
+   Ubuntu runner runs the Linux tests in parallel. Both must pass.
+4. The Linux tarball is repacked on Ubuntu with `chmod +x SlimCodeDesktop`, and
+   the release `v{version}` is created with both archives plus
+   `SHA256SUMS.txt` attached. Drafts must be published by hand on GitHub.
 
 ---
 
