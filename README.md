@@ -269,15 +269,25 @@ gh workflow run release.yml              # draft release (default)
 gh workflow run release.yml -f draft=false -f prerelease=true
 ```
 
-1. Bump `<Version>` in `SlimCodeDesktop.csproj`, commit, push to `main`.
-2. Run the workflow. It refuses any ref other than `main`, and fails early if
-   the tag `v{version}` already exists, so a forgotten bump can't overwrite a
-   release.
+Day-to-day work happens on `dev`; `main` always points at the latest release.
+
+1. Bump `<Version>` in `SlimCodeDesktop.csproj` on `dev`, commit, push.
+2. Run the workflow (from `dev` or `main` -- either way it releases the tip of
+   `dev`). It fails early if the tag `v{version}` already exists, so a
+   forgotten bump can't overwrite a release, and if `main` has commits `dev`
+   lacks (merge `main` into `dev` once, then rerun).
 3. A Windows runner executes `publish.ps1` (Windows tests + both archives); an
    Ubuntu runner runs the Linux tests in parallel. Both must pass.
-4. The Linux tarball is repacked on Ubuntu with `chmod +x SlimCodeDesktop`, and
-   the release `v{version}` is created with both archives plus
+4. The Linux tarball is repacked on Ubuntu with `chmod +x SlimCodeDesktop`.
+5. `main` is fast-forwarded to the released `dev` commit -- no merge commit,
+   and never to a commit whose build failed.
+6. The release `v{version}` is created on that commit with both archives plus
    `SHA256SUMS.txt` attached. Drafts must be published by hand on GitHub.
+
+A release whose `dev` commits change `.github/workflows/` needs the
+`RELEASE_PUSH_TOKEN` secret: GitHub's built-in token may not move a branch
+across workflow changes. Use a fine-grained PAT for this repo only with
+**Contents** and **Workflows** set to read and write.
 
 ---
 

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -36,24 +35,14 @@ public sealed class UpdateRelease
 /// downloads + verifies this platform's archive. Nothing here runs on its own
 /// -- every call is user-triggered from the About page.
 ///
-/// Assets are fetched through the API endpoint (<c>/releases/assets/{id}</c>
-/// with <c>Accept: application/octet-stream</c>) rather than the browser URL:
-/// it works anonymously on a public repo and with a token on a private one,
-/// so testing against the private repo exercises the same code path.
-///
-/// TEMPORARY: the <see cref="TokenEnvVar"/> support exists only to test
-/// against the private repo and goes away once the repo is public -- remove
-/// <see cref="TokenEnvVar"/>, <see cref="HasToken"/> and <c>_Token()</c>.
-/// HttpClient drops the Authorization header when following GitHub's redirect
-/// to the storage host, so the token never leaves api.github.com.
+/// Assets are fetched anonymously through the API endpoint
+/// (<c>/releases/assets/{id}</c> with <c>Accept: application/octet-stream</c>),
+/// which redirects to GitHub's storage host. The repository must be public.
 /// </summary>
 public static class UpdateService
 {
    public const string Owner = "andj1210";
    public const string Repo  = "SlimCodeDesktop";
-
-   /// <summary>TEMPORARY: optional GitHub token (read access) for testing against the private repo.</summary>
-   public const string TokenEnvVar = "SLIMCODE_UPDATE_TOKEN";
 
    public const string ChecksumsAssetName = "SHA256SUMS.txt";
 
@@ -77,9 +66,6 @@ public static class UpdateService
    /// <summary>Archive name publish.ps1 produces for <paramref name="version"/> on this platform.</summary>
    public static string ExpectedAssetName(string version) =>
       "slimcode_desktop_v" + version + "_" + RuntimeId + ArchiveExtension;
-
-   /// <summary>TEMPORARY: true when <see cref="TokenEnvVar"/> is set.</summary>
-   public static bool HasToken => !string.IsNullOrWhiteSpace(_Token());
 
    // -- versions -------------------------------------------------------------
 
@@ -126,9 +112,7 @@ public static class UpdateService
 
       if (resp.StatusCode == HttpStatusCode.NotFound)
       {
-         throw new InvalidOperationException(HasToken
-            ? "No published release found (or the token cannot read " + Owner + "/" + Repo + ")."
-            : "No published release found. If the repository is private, set " + TokenEnvVar + " to a GitHub token with read access.");
+         throw new InvalidOperationException("No published release found for " + Owner + "/" + Repo + ".");
       }
       if (!resp.IsSuccessStatusCode)
          throw new InvalidOperationException("GitHub answered " + (int)resp.StatusCode + " " + resp.ReasonPhrase + ".");
@@ -288,13 +272,8 @@ public static class UpdateService
    {
       var req = new HttpRequestMessage(HttpMethod.Get, url);
       req.Headers.Accept.ParseAdd(accept);
-      var token = _Token();
-      if (!string.IsNullOrWhiteSpace(token))
-         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
       return req;
    }
-
-   private static string? _Token() => Environment.GetEnvironmentVariable(TokenEnvVar);
 
    private static void _EnsureSuccess(HttpResponseMessage resp, string what)
    {

@@ -3,15 +3,23 @@
 # Manual only: start it from the Actions tab ("Run workflow") or with
 #   gh workflow run release.yml [-f draft=false] [-f prerelease=true]
 #
-# The version is taken from <Version> in SlimCodeDesktop.csproj and becomes the
-# tag v{version}. Bump it, commit, push to main, then run this workflow. A run
-# whose tag or release already exists fails before anything is built.
+# Work happens on dev; main only ever points at the latest release. A run
+# releases the current tip of dev: it is built and tested, and only when all
+# of that passes is main fast-forwarded to it and the release tagged on it.
+# main never gets a merge commit and never moves to an untested commit. If
+# main has commits that dev lacks (a direct fix on main), the run fails --
+# merge main into dev by hand once, then rerun.
+#
+# The version is taken from <Version> in dev's SlimCodeDesktop.csproj and
+# becomes the tag v{version}. Bump it, commit, push dev, then run this
+# workflow (from dev or main). A run whose tag or release already exists fails
+# before anything is built.
 #
 # Jobs:
-#   prepare      -- ref guard, version read, duplicate-release check
+#   prepare      -- ref guard, dev/main ancestry check, version, duplicate check
 #   build        -- Windows runner: publish.bat (Windows tests + all archives)
 #   test-linux   -- Ubuntu runner: the Linux unit tests a Windows host can't run
-#   release      -- Ubuntu runner: restore the Linux exec bit, checksums, release
+#   release      -- Ubuntu runner: exec bit, checksums, fast-forward main, release
 name: Release
 
 on:
@@ -46,15 +54,37 @@ jobs:
     permissions:
       contents: write
     outputs:
+      sha:     ${{ steps.source.outputs.sha }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Require main
-        if: github.ref != 'refs/heads/main'
+      # The selected ref only decides which copy of this workflow runs; what
+      # gets released is always the tip of dev.
+      - name: Require dev or main
+        if: github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/main'
         run: |
-          echo "::error::Releases are cut from main only (selected: $GITHUB_REF)."
+          echo "::error::Start the release from dev or main (selected: $GITHUB_REF)."
           exit 1
 
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve dev and check main can fast-forward
+        id: source
+        run: |
+          if ! git rev-parse --verify --quiet origin/dev > /dev/null; then
+            echo "::error::Branch dev does not exist on origin."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor origin/main origin/dev; then
+            echo "::error::main has commits that dev does not -- merge main into dev, push, and rerun."
+            git log --oneline origin/dev..origin/main
+            exit 1
+          fi
+          sha="$(git rev-parse origin/dev)"
+          echo "Releasing dev @ $sha ($(git rev-list --count origin/main..origin/dev) commit(s) ahead of main)"
+          git checkout --quiet --detach "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Read version from csproj
         id: version
@@ -90,6 +120,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -118,6 +150,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -139,6 +173,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
+      SHA:     ${{ needs.prepare.outputs.sha }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -165,6 +200,24 @@ jobs:
           sha256sum slimcode_desktop_* > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      # Only now, with build and tests green, does main move. force=false makes
+      # GitHub reject anything but a fast-forward, so a main that changed
+      # during the run stops the release instead of being overwritten.
+      #
+      # GITHUB_TOKEN may not move a branch across changes to .github/workflows/.
+      # For releases that include such changes, add a fine-grained PAT as the
+      # secret RELEASE_PUSH_TOKEN (this repo only; Contents + Workflows: read
+      # and write). Without it, such a run stops here, before any release exists.
+      - name: Fast-forward main to the released commit
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUSH_TOKEN || github.token }}
+        run: |
+          if ! gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/main" \
+                 -f sha="$SHA" -F force=false --jq '"main -> " + .object.sha'; then
+            echo "::error::Could not fast-forward main to $SHA. Either main moved during the run, or the release changes .github/workflows/ and needs the RELEASE_PUSH_TOKEN secret (see the comment in release.yml)."
+            exit 1
+          fi
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -176,7 +229,7 @@ jobs:
           if [ "$DRAFT" = "true" ]; then flags+=(--draft); fi
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
           gh release create "v${VERSION}" dist/* \
-            --target "$GITHUB_SHA" \
+            --target "$SHA" \
             --title "SlimCode Desktop v${VERSION}" \
             --generate-notes \
             "${flags[@]}"
