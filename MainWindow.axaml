@@ -1,0 +1,213 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SlimCodeDesktop.MainWindow"
+        Title="SlimCode Desktop"
+        Width="1280" Height="800"
+        Background="{DynamicResource WindowBackgroundBrush}">
+
+  <!-- 1 px window outline, only with the custom title bar in the restored
+       state (see MainWindow._UpdateChrome) - it replaces the native frame,
+       which Platform.InstallCustomTitleBar removes. -->
+  <Border x:Name="WindowOutline"
+          BorderThickness="0"
+          BorderBrush="{DynamicResource BorderColorBrush}">
+
+  <DockPanel>
+
+  <!-- Custom title strip. Shown only where Platform.UseCustomTitleBar
+       extends the client area (see MainWindow._ApplyTitleBar); Avalonia
+       draws the title text and caption buttons on top of it. Background
+       only: the whole strip is a window-drag region. -->
+  <Border DockPanel.Dock="Top"
+          x:Name="TitleBarStrip"
+          IsVisible="False"
+          IsHitTestVisible="False"
+          Background="{DynamicResource TitleBarBackgroundBrush}"
+          BorderBrush="{DynamicResource BorderColorBrush}"
+          BorderThickness="0,0,0,1"/>
+
+  <Grid ColumnDefinitions="220,*">
+
+    <!-- Sidebar: the pinned project list, or the session list of one project
+         after drilling in (double-click / chevron on a project row).
+         Width is explicit rather than column-filling so session mode can
+         widen it on hover: ZIndex puts it *over* the content pane, which
+         keeps long session captions readable without reflowing the chat
+         view underneath. -->
+    <Border Grid.Column="0"
+            x:Name="Sidebar"
+            Width="220"
+            ZIndex="10"
+            HorizontalAlignment="Left"
+            Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderColorBrush}"
+            BorderThickness="0,0,1,0"
+            PointerEntered="Sidebar_PointerEntered"
+            PointerExited="Sidebar_PointerExited">
+      <Border.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Width" Duration="0:0:0.12"/>
+        </Transitions>
+      </Border.Transitions>
+      <DockPanel>
+
+        <!-- Height matches the right pane's tab bar (TabStripBar) so both
+             bottom edges form one line across the window. -->
+        <Border DockPanel.Dock="Top"
+                Height="36"
+                Background="{DynamicResource AccentDarkBrush}"
+                BorderBrush="{DynamicResource BorderColorBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <Button Grid.Column="0"
+                    x:Name="BtnSidebarBack"
+                    Content="←"
+                    IsVisible="False"
+                    ToolTip.Tip="Back to projects"
+                    Padding="6,0"
+                    Margin="0,0,8,0"
+                    MinWidth="0"
+                    VerticalAlignment="Center"
+                    Click="BtnSidebarBack_Click"/>
+            <TextBlock Grid.Column="1"
+                       x:Name="SidebarTitle"
+                       Text="PROJECTS"
+                       Foreground="{DynamicResource TextOnAccentBrush}"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+          </Grid>
+        </Border>
+
+        <Button DockPanel.Dock="Bottom"
+                x:Name="BtnAddBracket"
+                Content="Add Bracket…"
+                Margin="8,0,8,8"
+                HorizontalAlignment="Stretch"
+                Click="BtnAddBracket_Click"/>
+
+        <Button DockPanel.Dock="Bottom"
+                x:Name="BtnAddMcp"
+                Content="Add MCP…"
+                IsVisible="False"
+                ToolTip.Tip="Add a project whose tools come from MCP servers instead of the built-in file / build / test tools."
+                Margin="8,6,8,0"
+                HorizontalAlignment="Stretch"
+                Click="BtnAddMcp_Click"/>
+
+        <Button DockPanel.Dock="Bottom"
+                x:Name="BtnAddFolder"
+                Content="Add Project…"
+                Margin="8,6,8,4"
+                HorizontalAlignment="Stretch"
+                Click="BtnAddFolder_Click"/>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="SidebarPanel"/>
+        </ScrollViewer>
+
+      </DockPanel>
+    </Border>
+
+    <!-- Right pane: the view bar, then the active content view -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+      <!-- View bar: session tabs on the left, the two non-tab views (History,
+           Configuration) on the right. Always shown, so the layout doesn't
+           jump when the first tab opens. Where no tab is active, a context
+           label names the place instead (see UpdateHeader). The project path
+           lives in the window title. Height matches the sidebar's PROJECTS
+           header so both bottom edges line up. -->
+      <Border Grid.Row="0"
+              x:Name="TabStripBar"
+              Height="36"
+              Background="{DynamicResource PanelBackgroundBrush}"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0"
+                      x:Name="HeaderPanel"
+                      Orientation="Horizontal"
+                      Spacing="8"
+                      Margin="14,0,10,0"
+                      VerticalAlignment="Center">
+            <TextBlock x:Name="HeaderText"
+                       Foreground="{DynamicResource AccentBrush}"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+            <TextBlock x:Name="HeaderDetail"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       FontSize="12"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+          <ScrollViewer Grid.Column="1"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="TabStripPanel"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Bottom"
+                        Margin="4,0"
+                        Spacing="2"/>
+          </ScrollViewer>
+          <StackPanel Grid.Column="2"
+                      Orientation="Horizontal"
+                      Spacing="6"
+                      Margin="8,0,8,0"
+                      VerticalAlignment="Center">
+            <Button x:Name="BtnHistory"
+                    Classes="bar"
+                    Content="History"
+                    IsEnabled="False"
+                    ToolTip.Tip="Stored sessions of this project"
+                    Click="BtnHistory_Click"/>
+            <Button x:Name="BtnToggleConfig"
+                    Classes="bar"
+                    Content="⚙"
+                    FontSize="14"
+                    ToolTip.Tip="Configuration"
+                    Click="BtnToggleConfig_Click"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Configuration view: auto-generated from the agent's Options -->
+      <Border Grid.Row="1"
+              x:Name="ConfigView"
+              IsVisible="False"
+              Background="{DynamicResource WindowBackgroundBrush}"
+              Padding="20">
+        <ScrollViewer>
+          <StackPanel x:Name="ConfigPanel"/>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Sessions view: resumable history for the selected project. Also the
+           startup / empty state — with no project selected it renders blank,
+           which is what the right pane shows before anything is picked. -->
+      <Border Grid.Row="1"
+              x:Name="SessionsView"
+              IsVisible="True"
+              Background="{DynamicResource WindowBackgroundBrush}">
+        <ScrollViewer>
+          <StackPanel x:Name="SessionsPanel" Margin="20"/>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Native tab host: holds one dynamically-created NativeAgentView per
+           open SlimCode Agent session; exactly the active tab's view is
+           visible inside it. Views are created in code (OpenNativeTab). -->
+      <Grid Grid.Row="1"
+            x:Name="NativeHost"
+            IsVisible="False"/>
+    </Grid>
+
+  </Grid>
+
+  </DockPanel>
+
+  </Border>
+</Window>

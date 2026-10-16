@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Target OS selection. Defaults to the build host; override explicitly to
+    cross-compile:  dotnet build -p:TargetOS=Linux
+
+    Deliberately NOT keyed on IsOSPlatform at the point of use: that would
+    describe the machine doing the build, so `dotnet publish -r linux-x64`
+    from Windows would silently compile the Windows sources in.
+  -->
+  <PropertyGroup>
+    <TargetOS Condition="'$(TargetOS)' == '' AND $([MSBuild]::IsOSPlatform('Windows'))">Windows</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == ''">Linux</TargetOS>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>0.0.1</Version>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- WinExe suppresses the console window; meaningless off Windows. -->
+    <OutputType Condition="'$(TargetOS)' == 'Windows'">WinExe</OutputType>
+    <OutputType Condition="'$(TargetOS)' != 'Windows'">Exe</OutputType>
+    <ApplicationManifest Condition="'$(TargetOS)' == 'Windows'">app.manifest</ApplicationManifest>
+
+    <DefineConstants>$(DefineConstants);PLATFORM_$(TargetOS.ToUpperInvariant())</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    Exactly one Platform/Platform.<OS>.cs compiles. The inactive one is
+    invisible to the compiler, so build it periodically to catch drift:
+    dotnet build -p:TargetOS=Linux
+  -->
+  <ItemGroup>
+    <Compile Remove="Platform\Platform.Windows.cs" Condition="'$(TargetOS)' != 'Windows'" />
+    <Compile Remove="Platform\Platform.Linux.cs" Condition="'$(TargetOS)' != 'Linux'" />
+  </ItemGroup>
+
+  <!--
+    Keep the SDK's default **/*.cs globbing out of folders that hold other
+    projects' sources: Tests\ (built via the solution) and packages\ (the
+    project-local NuGet cache — test packages such as xunit.v3 ship .cs
+    content files there).
+  -->
+  <ItemGroup>
+    <Compile Remove="Tests\**;packages\**" />
+    <None Remove="Tests\**;packages\**" />
+    <AvaloniaXaml Remove="Tests\**;packages\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Markdig" Version="0.41.3" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4-preview.1.1" />
+  </ItemGroup>
+</Project>

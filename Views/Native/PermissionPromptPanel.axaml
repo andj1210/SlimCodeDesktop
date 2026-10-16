@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SlimCodeDesktop.Views.Native.PermissionPromptPanel"
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+   <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="16">
+
+      <!-- Headline -->
+      <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+         <TextBlock Text="⚠" FontSize="20"
+                    Foreground="{DynamicResource AccentBrush}"
+                    VerticalAlignment="Center"/>
+         <TextBlock x:Name="TxtHeadline"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    VerticalAlignment="Center"/>
+         <!-- Origin pill: only shown when a nested subagent raised the call,
+              so the user never mistakes it for the agent they are talking to. -->
+         <Border x:Name="OriginBadge"
+                 Background="{DynamicResource AccentDarkBrush}"
+                 CornerRadius="3"
+                 Padding="6,2"
+                 VerticalAlignment="Center"
+                 IsVisible="False">
+            <TextBlock x:Name="TxtOrigin"
+                       FontSize="11"
+                       Foreground="White"
+                       VerticalAlignment="Center"/>
+         </Border>
+      </StackPanel>
+
+      <!-- Project + category strip -->
+      <Border Grid.Row="1"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="0,0,0,8"
+              Margin="0,0,0,8">
+         <Grid ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="Project: "
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       FontSize="11"
+                       VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1"
+                       x:Name="TxtProject"
+                       FontSize="11"
+                       FontFamily="Consolas, Cascadia Mono, Courier New, monospace"
+                       Foreground="{DynamicResource TextLogBrush}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Grid.Column="2"
+                       x:Name="TxtCategory"
+                       FontSize="11"
+                       Padding="6,2"
+                       VerticalAlignment="Center"/>
+         </Grid>
+      </Border>
+
+      <!-- Arguments preview -->
+      <Border Grid.Row="2"
+              Background="{DynamicResource PanelBackgroundBrush}"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="1"
+              CornerRadius="3"
+              Padding="10,8">
+         <StackPanel Spacing="4">
+            <TextBlock Text="Arguments"
+                       FontSize="10"
+                       Foreground="{DynamicResource TextMutedBrush}"/>
+            <ScrollViewer MaxHeight="160"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+               <SelectableTextBlock x:Name="TxtArgs"
+                                    FontFamily="Consolas, Cascadia Mono, Courier New, monospace"
+                                    FontSize="11"
+                                    TextWrapping="Wrap"
+                                    Foreground="{DynamicResource TextLogBrush}"/>
+            </ScrollViewer>
+         </StackPanel>
+      </Border>
+
+      <!-- Reason input + optional restriction note + Plan-mode escape hatch -->
+      <StackPanel Grid.Row="3" Margin="0,12,0,12" Spacing="4">
+         <TextBlock x:Name="TxtRestriction"
+                    FontSize="11"
+                    FontStyle="Italic"
+                    Foreground="{DynamicResource AccentBrush}"
+                    TextWrapping="Wrap"
+                    IsVisible="False"/>
+         <Button x:Name="BtnSwitchImplement"
+                 Content="Switch to Implement mode"
+                 Padding="10,4"
+                 FontSize="11"
+                 HorizontalAlignment="Left"
+                 Margin="0,2,0,2"
+                 IsVisible="False"
+                 Click="BtnSwitchImplement_Click"
+                 ToolTip.Tip="If you triggered Plan mode by mistake: switch the session to Implement and let cached approvals decide this call."/>
+         <TextBlock Text="Reason (optional, recorded in audit log):"
+                    FontSize="11"
+                    Foreground="{DynamicResource TextMutedStrongBrush}"/>
+         <TextBox x:Name="TxtReason"
+                  Foreground="{DynamicResource TextPrimaryBrush}"
+                  Background="{DynamicResource PanelBackgroundBrush}"
+                  CaretBrush="{DynamicResource TextPrimaryBrush}"
+                  BorderBrush="{DynamicResource BorderColorBrush}"
+                  Padding="6,4"/>
+      </StackPanel>
+
+      <!-- Action buttons. Left: abort | deny. Right column (stacked):
+           Allow once, Allow session, gap, Allow project. Global is intentionally
+           absent — change global policy via the Permission Editor. Wider-scope
+           buttons are hidden when OneShotOnly is set. -->
+      <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*,Auto">
+         <Button Grid.Column="0" x:Name="BtnAbort"
+                 Content="Abort agent"
+                 Padding="14,6"
+                 Margin="0,0,8,0"
+                 FontWeight="SemiBold"
+                 Background="#8B2E2E"
+                 Foreground="White"
+                 VerticalAlignment="Bottom"
+                 Click="BtnAbort_Click"
+                 ToolTip.Tip="Deny this call and stop the agent loop. Use this when the model keeps retrying after denials."/>
+         <Button Grid.Column="1" x:Name="BtnDeny"
+                 Content="Deny"
+                 Padding="14,6"
+                 FontWeight="SemiBold"
+                 Background="IndianRed"
+                 Foreground="White"
+                 VerticalAlignment="Bottom"
+                 Click="BtnDeny_Click"/>
+         <StackPanel Grid.Column="3" Orientation="Vertical" Spacing="4"
+                     HorizontalAlignment="Right">
+            <Button x:Name="BtnAllowOnce"    Content="Allow once"    Padding="12,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="BtnAllowOnce_Click"/>
+            <Button x:Name="BtnAllowSession" Content="Allow session" Padding="12,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="BtnAllowSession_Click"/>
+            <Button x:Name="BtnAllowProject" Content="Allow project" Padding="12,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0" Click="BtnAllowProject_Click"/>
+         </StackPanel>
+      </Grid>
+   </Grid>
+</UserControl>

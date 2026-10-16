@@ -1,0 +1,102 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SlimCodeDesktop.App"
+             RequestedThemeVariant="Dark">
+
+    <!-- Theme palette. One file per theme; swap by changing the Source. -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://SlimCodeDesktop/Themes/DarkTheme.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Disable scrollbar auto-hide globally. Avalonia Fluent's
+             ~1s expand/collapse hover animation is sluggish UX; keeping
+             the bar at its expanded width also eliminates the case where
+             a hovering bar clips the rightmost text. Bars still disappear
+             entirely when content fits (governed by the *ScrollBarVisibility
+             properties, which are independent of AllowAutoHide). -->
+        <Style Selector="ScrollViewer">
+            <Setter Property="AllowAutoHide" Value="False"/>
+        </Style>
+
+        <!-- High-contrast buttons so they stand out against the dark backgrounds. -->
+        <Style Selector="Button">
+            <Setter Property="Background"   Value="{DynamicResource AccentDarkBrush}"/>
+            <Setter Property="Foreground"   Value="{DynamicResource TextOnAccentBrush}"/>
+            <Setter Property="BorderBrush"  Value="{DynamicResource AccentHoverBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background"  Value="{DynamicResource AccentHoverBrush}"/>
+            <Setter Property="Foreground"  Value="{DynamicResource TextOnAccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter">
+            <Setter Property="Background"  Value="{DynamicResource AccentPressedBrush}"/>
+            <Setter Property="Foreground"  Value="{DynamicResource TextOnAccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentDarkBrush}"/>
+        </Style>
+
+        <!-- View-switch buttons in the main tab bar (History, Configuration).
+             .active marks the view currently shown, with the bright accent
+             in place of the usual dark one. -->
+        <Style Selector="Button.bar">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Padding" Value="9,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.bar.active">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+
+        <!-- Compact pickers for toolbar rows (model / reasoning level). One
+             class so neighbouring combos share height, font, padding and
+             border instead of mixing Fluent's 32 px default with ad-hoc
+             overrides. Pointer-over / pressed still come from Fluent. -->
+        <Style Selector="ComboBox.toolbar">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="8,0,0,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
+        <!-- TabItem: Fluent's defaults read as black-on-gray on our dark
+             backgrounds. Force readable foregrounds and an accent strip on
+             the selected tab. -->
+        <Style Selector="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+        </Style>
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+        </Style>
+        <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}"/>
+        </Style>
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </Application.Styles>
+</Application>

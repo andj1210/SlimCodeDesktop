@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SlimCodeDesktop.Views.Native.AuditLogWindow"
+        Title="Permission audit log"
+        Width="960" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+
+      <!-- Title strip -->
+      <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+         <TextBlock Text="Permission audit log"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Foreground="{DynamicResource AccentBrush}"/>
+         <TextBlock x:Name="TxtPath"
+                    FontSize="10"
+                    FontFamily="Consolas, Cascadia Mono, Courier New, monospace"
+                    Foreground="{DynamicResource TextMutedBrush}"
+                    TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+
+      <!-- Toolbar -->
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,8">
+         <TextBlock Grid.Column="0"
+                    x:Name="TxtCount"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource TextMutedStrongBrush}"
+                    FontSize="11"/>
+         <CheckBox Grid.Column="2" x:Name="ChkSessionOnly"
+                   Content="Only this session"
+                   VerticalAlignment="Center"
+                   Margin="0,0,12,0"
+                   IsChecked="False"
+                   IsVisible="False"
+                   IsCheckedChanged="ChkSessionOnly_Changed"/>
+         <Button Grid.Column="3" x:Name="BtnRefresh"
+                 Content="Refresh"
+                 Padding="10,4"
+                 Margin="0,0,6,0"
+                 Click="BtnRefresh_Click"/>
+         <Button Grid.Column="4" x:Name="BtnClear"
+                 Content="Clear log"
+                 Padding="10,4"
+                 Click="BtnClear_Click"/>
+      </Grid>
+
+      <!-- Entries list -->
+      <Border Grid.Row="2"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="1">
+         <ScrollViewer>
+            <StackPanel x:Name="RowsPanel" Spacing="0"/>
+         </ScrollViewer>
+      </Border>
+
+      <!-- Footer -->
+      <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+         <Button Grid.Column="1" x:Name="BtnClose"
+                 Content="Close"
+                 Padding="14,4"
+                 Click="BtnClose_Click"/>
+      </Grid>
+   </Grid>
+</Window>

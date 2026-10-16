@@ -1,0 +1,151 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SlimCodeDesktop.Views.Native.ProjectSettingsWindow"
+        Title="Project setup"
+        Width="840" Height="680"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+   <Grid RowDefinitions="Auto,*,Auto" Margin="14">
+
+      <!-- Intro -->
+      <TextBlock Grid.Row="0"
+                 x:Name="TxtIntro"
+                 Text="Build / test steps the agent may run for this project. The model can only trigger these fixed steps (no free-form shell); each runs in order and stops at the first failure. 'Log on success' attaches a step's output even when it succeeds — failed steps always include their log."
+                 TextWrapping="Wrap"
+                 Foreground="{DynamicResource TextMutedStrongBrush}"
+                 Margin="0,0,0,12"/>
+
+      <ScrollViewer Grid.Row="1">
+         <StackPanel Spacing="18">
+
+            <!-- Display alias (sidebar-only; hidden when opened from the chat view) -->
+            <StackPanel x:Name="AliasSection" Spacing="6" IsVisible="False">
+               <TextBlock Text="Display alias" FontWeight="SemiBold" FontSize="13"/>
+               <TextBlock Text="Optional friendly name shown for this project in the sidebar list. Leave empty to use the folder name."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"/>
+               <TextBox x:Name="TxtAlias"
+                        PlaceholderText="(folder name)"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        Background="{DynamicResource PanelBackgroundBrush}"
+                        CaretBrush="{DynamicResource TextPrimaryBrush}"
+                        BorderBrush="{DynamicResource BorderColorBrush}"/>
+            </StackPanel>
+
+            <!-- MCP servers (an MCP project only; the layout below is chosen
+                 by the project's kind, which is fixed when it is created) -->
+            <StackPanel x:Name="McpSection" Spacing="6" IsVisible="False">
+               <TextBlock Text="MCP servers" FontWeight="SemiBold" FontSize="13"/>
+               <TextBlock Text="Sessions in this project get their tools from these Model Context Protocol servers instead of the built-in file tools. Servers are contacted on a session's first message, not when the project is opened. Use 'Test connection' to see what a server advertises and to pick which of its tools to expose."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"/>
+               <TextBlock Text="HTTP headers (bearer tokens included) are stored in plaintext in this project's config file."
+                          TextWrapping="Wrap"
+                          Foreground="#C8A050"
+                          FontSize="11"/>
+               <StackPanel x:Name="McpServersPanel" Spacing="8"/>
+               <Button x:Name="BtnAddMcpServer" Content="+ Add MCP server"
+                       HorizontalAlignment="Left"
+                       Padding="10,4" Click="BtnAddMcpServer_Click"/>
+            </StackPanel>
+
+            <!-- Everything below applies to a code project only. -->
+            <StackPanel x:Name="CodeSections" Spacing="18">
+
+            <!-- Build -->
+            <StackPanel Spacing="6">
+               <TextBlock Text="Build steps" FontWeight="SemiBold" FontSize="13"/>
+               <Border BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
+                  <StackPanel x:Name="BuildStepsPanel" Spacing="2" Margin="6"/>
+               </Border>
+               <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button x:Name="BtnAddBuild" Content="+ Add build step"
+                          Padding="10,4" Click="BtnAddBuild_Click"/>
+                  <Button x:Name="BtnTryBuild" Content="Test in terminal"
+                          Padding="10,4" Click="BtnTryBuild_Click"
+                          ToolTip.Tip="Run the build steps once in a cmd.exe window (kept open) in the project folder."/>
+                  <TextBlock Text="Per-step timeout (s):" FontSize="11"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             VerticalAlignment="Center"/>
+                  <NumericUpDown x:Name="NudBuildTimeout"
+                                 Minimum="1" Maximum="600" Increment="10"
+                                 FormatString="0" Width="120"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 Background="{DynamicResource PanelBackgroundBrush}"/>
+               </StackPanel>
+            </StackPanel>
+
+            <!-- Test -->
+            <StackPanel Spacing="6">
+               <TextBlock Text="Test steps" FontWeight="SemiBold" FontSize="13"/>
+               <Border BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
+                  <StackPanel x:Name="TestStepsPanel" Spacing="2" Margin="6"/>
+               </Border>
+               <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button x:Name="BtnAddTest" Content="+ Add test step"
+                          Padding="10,4" Click="BtnAddTest_Click"/>
+                  <Button x:Name="BtnTryTest" Content="Test in terminal"
+                          Padding="10,4" Click="BtnTryTest_Click"
+                          ToolTip.Tip="Run the test steps once in a cmd.exe window (kept open) in the project folder."/>
+                  <TextBlock Text="Per-step timeout (s):" FontSize="11"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             VerticalAlignment="Center"/>
+                  <NumericUpDown x:Name="NudTestTimeout"
+                                 Minimum="1" Maximum="600" Increment="10"
+                                 FormatString="0" Width="120"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 Background="{DynamicResource PanelBackgroundBrush}"/>
+               </StackPanel>
+            </StackPanel>
+
+            <!-- Skills -->
+            <StackPanel Spacing="6">
+               <TextBlock Text="Skills" FontWeight="SemiBold" FontSize="13"/>
+               <TextBlock Text="Reusable instruction modules the agent can load on demand. Edit SKILL.md files in your own editor; this list is discovery-only. Check a skill to auto-load it at the start of every new session for this project."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"/>
+               <Border BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
+                  <StackPanel x:Name="SkillsPanel" Spacing="2" Margin="6"/>
+               </Border>
+               <CheckBox x:Name="ChkSkipSkillAnnouncement"
+                         Content="Skip skill announcement"
+                         Margin="0,2,0,0"
+                         ToolTip.Tip="Leave the skills catalog out of the system prompt. Auto-loaded skills, the session skill picker, and loading a skill you name in chat all keep working."/>
+               <TextBlock Text="Keeps the system prompt lean: the model is not told which skills exist, so it won't reach for one on its own. You can still load any skill explicitly."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"
+                          Margin="24,0,0,0"/>
+               <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button x:Name="BtnOpenGlobalSkills" Content="Open global skills folder"
+                          Padding="10,4" Click="BtnOpenGlobalSkills_Click"/>
+                  <Button x:Name="BtnOpenProjectSkills" Content="Open project skills folder"
+                          Padding="10,4" Click="BtnOpenProjectSkills_Click"/>
+               </StackPanel>
+            </StackPanel>
+
+            </StackPanel>
+         </StackPanel>
+      </ScrollViewer>
+
+      <!-- Footer -->
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+         <Button Grid.Column="1" x:Name="BtnCancel"
+                 Content="Cancel"
+                 Padding="14,4"
+                 Margin="6,0,0,0"
+                 Click="BtnCancel_Click"/>
+         <Button Grid.Column="2" x:Name="BtnSave"
+                 Content="Save"
+                 Padding="14,4"
+                 Margin="6,0,0,0"
+                 FontWeight="Bold"
+                 Click="BtnSave_Click"/>
+      </Grid>
+   </Grid>
+</Window>

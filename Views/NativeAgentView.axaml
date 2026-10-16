@@ -1,0 +1,350 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:native="clr-namespace:SlimCodeDesktop.Views.Native"
+             x:Class="SlimCodeDesktop.Views.NativeAgentView"
+             Background="{DynamicResource WindowBackgroundBrush}"
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+   <!-- Two stacked layers: the chat layout, and the per-tab pseudo-modal
+        permission overlay above it. The overlay blocks only this view (tab)
+        — other tabs and the tab strip stay interactive, which is the whole
+        point of overlay-instead-of-modal-window. -->
+   <Grid>
+
+   <!-- Row 2 is a draggable GridSplitter that resizes the input area (row 3)
+        against the transcript (row 1). MinHeights on rows 1 and 3 prevent
+        the splitter from collapsing either pane completely. -->
+   <Grid>
+      <Grid.RowDefinitions>
+         <RowDefinition Height="Auto"/>
+         <RowDefinition Height="*" MinHeight="120"/>
+         <RowDefinition Height="5"/>
+         <RowDefinition Height="120" MinHeight="60" MaxHeight="500"/>
+      </Grid.RowDefinitions>
+
+      <!-- Header: status + actions menu + clear -->
+      <Border Grid.Row="0"
+              Background="{DynamicResource PanelBackgroundBrush}"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="10,6">
+         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="Model:"
+                       VerticalAlignment="Center"
+                       Margin="0,0,6,0"
+                       Foreground="{DynamicResource TextMutedStrongBrush}"
+                       FontSize="11"/>
+            <ComboBox Grid.Column="1" x:Name="CmbModel"
+                      Classes="toolbar"
+                      MinWidth="220"
+                      VerticalAlignment="Center"
+                      SelectionChanged="CmbModel_SelectionChanged"/>
+            <!-- The model's reasoning level. Caption and picker share one column
+                 so the header grid keeps its shape. Collapsed as a unit for
+                 models whose catalog entry declares no reasoning style, since
+                 there is nothing to offer and a dead control reads as broken. -->
+            <StackPanel Grid.Column="2" x:Name="PnlReasoning"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0"
+                        IsVisible="False">
+               <TextBlock Text="Think:"
+                          VerticalAlignment="Center"
+                          Margin="0,0,6,0"
+                          Foreground="{DynamicResource TextMutedStrongBrush}"
+                          FontSize="11"/>
+               <ComboBox x:Name="CmbReasoning"
+                         Classes="toolbar"
+                         MinWidth="96"
+                         VerticalAlignment="Center"
+                         SelectionChanged="CmbReasoning_SelectionChanged"/>
+            </StackPanel>
+            <!-- Status line, preceded by the per-server MCP connection pills
+                 (empty and collapsed for a normal coding project). A DockPanel
+                 rather than two grid columns so the pills can come and go
+                 without renumbering the header. -->
+            <DockPanel Grid.Column="3" Margin="12,0,0,0">
+               <StackPanel x:Name="PnlMcp"
+                           DockPanel.Dock="Left"
+                           Orientation="Horizontal"
+                           Spacing="4"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"
+                           IsVisible="False"/>
+               <TextBlock x:Name="TxtStatus"
+                          VerticalAlignment="Center"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"
+                          TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+            <ToggleButton Grid.Column="4" x:Name="TglSystem"
+                          Content="sys"
+                          FontSize="11"
+                          Padding="8,2"
+                          Margin="0,0,8,0"
+                          VerticalAlignment="Center"
+                          ToolTip.Tip="Show system messages (mode changes, injected correction notes the model sees) in the transcript."
+                          Click="TglSystem_Click"/>
+            <!-- Session statistics: time per phase on top, token provenance
+                 (read vs written) below. Both are SegmentBars built in
+                 code-behind; hover either for the figures. -->
+            <StackPanel Grid.Column="5" x:Name="PnlStats"
+                        Orientation="Vertical"
+                        Spacing="3"
+                        VerticalAlignment="Center"
+                        Margin="0,0,10,0"/>
+            <native:ContextFillGauge Grid.Column="6" x:Name="Gauge"
+                                     VerticalAlignment="Center"
+                                     Margin="0,0,8,0"/>
+            <Button Grid.Column="7" x:Name="BtnMenu"
+                    Content="≡"
+                    FontSize="16"
+                    Padding="10,0"
+                    Margin="0,0,6,0">
+               <Button.Flyout>
+                  <MenuFlyout>
+                     <MenuItem x:Name="MnuProjectSettings"
+                               Header="Project settings…"
+                               Click="BtnProjectSettings_Click"/>
+                     <MenuItem x:Name="MnuProjectPerms"
+                               Header="Project permissions…"
+                               Click="BtnProjectPerms_Click"/>
+                     <MenuItem x:Name="MnuAuditLog"
+                               Header="View audit log…"
+                               Click="BtnAuditLog_Click"/>
+                  </MenuFlyout>
+               </Button.Flyout>
+            </Button>
+            <Button Grid.Column="8" x:Name="BtnClose"
+                    Content="Close"
+                    Padding="10,2"
+                    ToolTip.Tip="End the active session (file stays on disk and is resumable from the project picker)."
+                    Click="BtnClose_Click"/>
+         </Grid>
+      </Border>
+
+      <!-- Transcript log + pinned task panel. Task panel is docked at the
+           top so it stays visible regardless of where the user has scrolled
+           in the transcript; it hides itself when the model hasn't emitted
+           a `tasks` fenced block yet. -->
+      <Border Grid.Row="1"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="0">
+         <DockPanel LastChildFill="True">
+            <native:TaskListPanel x:Name="TaskPanel"
+                                  DockPanel.Dock="Top"/>
+            <ScrollViewer x:Name="LogScroll"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          Background="{DynamicResource WindowBackgroundBrush}">
+               <StackPanel x:Name="TranscriptPanel"
+                           Margin="14,10"
+                           Spacing="0"/>
+            </ScrollViewer>
+         </DockPanel>
+      </Border>
+
+      <!-- Splitter: drag to resize the input area. Doubles as a live-state
+           indicator: green = autoscroll latched, gray = scrolled into
+           history; a knight-rider streak plays while the agent is working. -->
+      <native:AnimatedSplitter Grid.Row="2"
+                               x:Name="StatusSplitter"
+                               Height="10"
+                               HorizontalAlignment="Stretch"
+                               ResizeDirection="Rows"
+                               ResizeBehavior="PreviousAndNext"
+                               Cursor="SizeNorthSouth"/>
+
+      <!-- Input bar: a thin "model" row sits above the TextBox so the user
+           can switch models without leaving the chat. Send/Cancel buttons
+           anchor to the bottom of the resizable input area. -->
+      <Border Grid.Row="3"
+              x:Name="InputBar"
+              Background="{DynamicResource PanelBackgroundBrush}"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="10,6">
+         <DockPanel>
+         <!-- Images staged for the next Send. Collapses itself when empty,
+              so a text-only session sees exactly the layout it always had. -->
+         <native:AttachmentStrip x:Name="Attachments" DockPanel.Dock="Top"/>
+         <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto,Auto,Auto">
+            <!-- Mode selector above Send/Cancel: pill pair, only the active
+                 mode is highlighted. The flip is queued — the actual mode
+                 change is announced to the model on the next Send.
+                 The "pending" hint sits BELOW the pills so toggling its
+                 visibility never reflows the input box width. -->
+            <StackPanel Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                        Orientation="Vertical"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,0,4">
+               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                  <Button x:Name="BtnSkills"
+                          Content="Skills ▾"
+                          FontSize="11"
+                          Padding="8,2"
+                          Margin="0,0,10,0"
+                          ToolTip.Tip="Pick skills to load into this session. Loaded skills are checked; selections apply on the next Send."
+                          Click="BtnSkills_Click"/>
+                  <Button x:Name="BtnModePlan"
+                          Content="Plan"
+                          FontSize="11"
+                          Padding="8,2"
+                          Margin="0,0,4,0"
+                          Click="BtnModePlan_Click"/>
+                  <Button x:Name="BtnModeImplement"
+                          Content="Implement"
+                          FontSize="11"
+                          Padding="8,2"
+                          Click="BtnModeImplement_Click"/>
+               </StackPanel>
+               <TextBlock x:Name="TxtModePending"
+                          Text="(applies on send)"
+                          FontSize="10"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          HorizontalAlignment="Right"
+                          Margin="0,2,0,0"
+                          IsVisible="False"/>
+            </StackPanel>
+
+            <!-- Input + action buttons. Model selector lives in the header. -->
+            <TextBox  Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" x:Name="TxtInput"
+                      AcceptsReturn="True"
+                      TextWrapping="Wrap"
+                      VerticalContentAlignment="Top"
+                      BorderThickness="2"
+                      Foreground="{DynamicResource TextPrimaryBrush}"
+                      Background="{DynamicResource PanelBackgroundBrush}"
+                      CaretBrush="{DynamicResource TextPrimaryBrush}"
+                      PlaceholderText="Ask about the project… (Enter = new line, Shift+Enter = send, drop or paste images to attach)"
+                      PlaceholderForeground="{DynamicResource TextMutedBrush}">
+               <!--
+                  Avalonia Fluent's TextBox swaps to TextControlBackgroundFocused
+                  (≈ white) on focus, which is unreadable on this dark theme.
+                  Override the brushes locally so all three states share the
+                  panel color, with a barely-perceptible lift on hover.
+               -->
+               <TextBox.Resources>
+                  <StaticResource x:Key="TextControlBackground"            ResourceKey="PanelBackgroundBrush"/>
+                  <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="HoverBackgroundBrush"/>
+                  <StaticResource x:Key="TextControlBackgroundFocused"     ResourceKey="PanelBackgroundBrush"/>
+                  <StaticResource x:Key="TextControlForeground"            ResourceKey="TextPrimaryBrush"/>
+                  <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
+                  <StaticResource x:Key="TextControlForegroundFocused"     ResourceKey="TextPrimaryBrush"/>
+                  <StaticResource x:Key="TextControlPlaceholderForeground"            ResourceKey="TextMutedBrush"/>
+                  <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="TextMutedBrush"/>
+                  <StaticResource x:Key="TextControlPlaceholderForegroundFocused"     ResourceKey="TextMutedBrush"/>
+                  <!-- TextControlSelectionHighlightColor is set from code in
+                       _ApplyModeTintToInput, alongside the other accent-derived
+                       brushes on this box - it has to follow the user accent. -->
+               </TextBox.Resources>
+            </TextBox>
+
+            <!-- Clipboard wizard indicator, immediately right of the prompt.
+                 Appears only when the window was just activated with a new
+                 image on the clipboard, so its presence IS the notification —
+                 no popup, no timeout, and ignoring it costs nothing. Collapsed
+                 (not merely hidden) the rest of the time, so Send keeps its
+                 place against the input box. -->
+            <Button   Grid.Row="1" Grid.Column="1" x:Name="BtnClipWizard"
+                      Content="&#x2702;"
+                      IsVisible="False"
+                      FontSize="14"
+                      Margin="6,0,0,0"
+                      Padding="10,4"
+                      VerticalAlignment="Bottom"
+                      BorderThickness="1"
+                      BorderBrush="{DynamicResource AccentBrush}"
+                      Cursor="Hand"
+                      ToolTip.Tip="An image is on the clipboard — click to crop and attach it"
+                      Click="BtnClipWizard_Click"/>
+
+            <Button   Grid.Row="1" Grid.Column="2" x:Name="BtnSend"
+                      Content="Send"
+                      Margin="6,0,0,0"
+                      Padding="14,4"
+                      VerticalAlignment="Bottom"
+                      BorderThickness="1"
+                      BorderBrush="Transparent"
+                      Click="BtnSend_Click"/>
+            <Button   Grid.Row="1" Grid.Column="3" x:Name="BtnCancel"
+                      Content="Cancel"
+                      Margin="6,0,0,0"
+                      Padding="14,4"
+                      VerticalAlignment="Bottom"
+                      IsEnabled="False"
+                      Click="BtnCancel_Click"/>
+         </Grid>
+         </DockPanel>
+      </Border>
+
+   </Grid>
+
+   <!-- Image preview: click anywhere or Escape to dismiss. Declared BEFORE
+        the permission overlay so a prompt arriving while a preview is open
+        still renders (and takes input) above it.
+
+        Sizing is declarative: Stretch=Uniform scales the image down to the
+        star row when the window is too small, and a MaxWidth/MaxHeight set
+        in code to the bitmap's own size stops it being blown up past 1:1.
+        The caption row must be Auto inside a Grid — a vertical StackPanel
+        would measure the image with infinite height and overflow. -->
+   <Border x:Name="ImagePreviewOverlay"
+           IsVisible="False"
+           Background="#D0000000"
+           Focusable="True">
+      <Grid RowDefinitions="*,Auto"
+            Margin="24"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+         <!-- Centered rather than stretched so the frame shrink-wraps the
+              image instead of drawing a window-sized box around a small one.
+              Alignment only affects arrange, so the image is still measured
+              against the full row and scales down when it has to. -->
+         <Border Grid.Row="0"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Background="{DynamicResource WindowBackgroundBrush}"
+                 BorderBrush="{DynamicResource BorderColorBrush}"
+                 BorderThickness="1"
+                 CornerRadius="4"
+                 Padding="4">
+            <Image x:Name="ImagePreviewImage" Stretch="Uniform"/>
+         </Border>
+         <TextBlock Grid.Row="1"
+                    x:Name="ImagePreviewCaption"
+                    HorizontalAlignment="Center"
+                    Margin="0,8,0,0"
+                    FontSize="11"
+                    Foreground="{DynamicResource TextMutedBrush}"/>
+      </Grid>
+   </Border>
+
+   <!-- Clipboard wizard: crop-and-attach over the pasted image. Sits above
+        the preview lightbox but below the permission overlay, so a permission
+        prompt arriving mid-crop still takes precedence. -->
+   <native:ImageCropOverlay x:Name="CropOverlay"/>
+
+   <!-- Pseudo-modal permission overlay: dims the tab and hosts the prompt
+        card. Hit-testing on the dim layer swallows all input to the chat
+        beneath; Escape resolves as a one-shot Deny (wired in code-behind). -->
+   <Border x:Name="PermissionOverlay"
+           IsVisible="False"
+           Background="#A0000000"
+           Focusable="True">
+      <Border MaxWidth="640"
+              Margin="24"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Background="{DynamicResource WindowBackgroundBrush}"
+              BorderBrush="{DynamicResource AccentBrush}"
+              BorderThickness="1"
+              CornerRadius="6"
+              BoxShadow="0 4 24 0 #80000000">
+         <native:PermissionPromptPanel x:Name="PermPanel"/>
+      </Border>
+   </Border>
+
+   </Grid>
+</UserControl>

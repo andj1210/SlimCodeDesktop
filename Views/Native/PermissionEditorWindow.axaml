@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SlimCodeDesktop.Views.Native.PermissionEditorWindow"
+        Title="Permissions"
+        Width="720" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+
+      <!-- Title strip -->
+      <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+         <TextBlock x:Name="TxtTitle"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Foreground="{DynamicResource AccentBrush}"/>
+         <TextBlock x:Name="TxtSubtitle"
+                    FontSize="11"
+                    Foreground="{DynamicResource TextMutedStrongBrush}"
+                    TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <!-- Mode legend -->
+      <TextBlock Grid.Row="1"
+                 x:Name="TxtLegend"
+                 FontSize="11"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 TextWrapping="Wrap"
+                 Margin="0,0,0,10"/>
+
+      <!-- Rows -->
+      <Border Grid.Row="2"
+              BorderBrush="{DynamicResource BorderColorBrush}"
+              BorderThickness="1">
+         <ScrollViewer>
+            <StackPanel x:Name="RowsPanel" Spacing="0" Margin="0"/>
+         </ScrollViewer>
+      </Border>
+
+      <!-- Footer -->
+      <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+         <Button Grid.Column="1" x:Name="BtnCancel"
+                 Content="Cancel"
+                 Padding="14,4"
+                 Margin="6,0,0,0"
+                 Click="BtnCancel_Click"/>
+         <Button Grid.Column="2" x:Name="BtnSave"
+                 Content="Save"
+                 Padding="14,4"
+                 Margin="6,0,0,0"
+                 FontWeight="Bold"
+                 Click="BtnSave_Click"/>
+      </Grid>
+   </Grid>
+</Window>

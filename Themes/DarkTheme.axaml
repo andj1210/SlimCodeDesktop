@@ -1,0 +1,60 @@
+<!--
+  Copyright 2026 Andreas Jung
+  SPDX-License-Identifier: GPL-3.0-only
+
+  Dark theme palette. One ResourceDictionary per theme; consumed via
+  {DynamicResource ...} in XAML and ThemeBrushes.Get(...) in code-behind.
+
+  Slot naming is *semantic* — talk about role (TextMuted, Accent, Border)
+  rather than literal color. Adding a light theme later = clone this file
+  and replace the values; nothing else needs to move.
+
+  Inventory: 15 slots covering ~40 call sites across MainWindow, App.axaml
+  styles, and code-built UI.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+   <!-- Backgrounds: darkest (title strip) -> lightest (hover surface).
+        Fixed neutrals: unlike the accent below, these are not user-overridable.
+        Hover sits a clear step above Panel so pointer feedback stays visible
+        at this darker level. -->
+   <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#121212"/>
+   <SolidColorBrush x:Key="WindowBackgroundBrush"   Color="#171717"/>
+   <SolidColorBrush x:Key="PanelBackgroundBrush"    Color="#1E1E1F"/>
+   <SolidColorBrush x:Key="HoverBackgroundBrush"    Color="#29292B"/>
+
+   <!-- Borders / neutral surface. Same hex today; distinct roles. -->
+   <SolidColorBrush x:Key="BorderColorBrush"             Color="#333335"/>
+   <SolidColorBrush x:Key="NeutralButtonBackgroundBrush" Color="#333335"/>
+
+   <!-- Text -->
+   <SolidColorBrush x:Key="TextPrimaryBrush"      Color="#CCCCCC"/>
+   <SolidColorBrush x:Key="TextMutedBrush"        Color="#888888"/>
+   <SolidColorBrush x:Key="TextMutedStrongBrush"  Color="#AAAAAA"/>
+   <SolidColorBrush x:Key="TextLogBrush"          Color="#DDDDDD"/>
+   <SolidColorBrush x:Key="TextOnAccentBrush"     Color="#FFFFFF"/>
+
+   <!-- Accent (cyan/blue family). Accent = primary highlight; Dark/Hover/Pressed
+        are progressively darker variants used by interactive controls.
+
+        These five (including TextOnAccentBrush above) are the theme's only
+        user-overridable slots: AccentPalette re-derives them from one base
+        color at startup and writes them into Application.Resources, where they
+        shadow the values here. The quartet below is what that ramp produces
+        from #3DA8E5 (matching to within ~5/255 per channel on the three darker
+        steps), so editing one value here without the others will be silently
+        undone for anyone who touches the accent setting. -->
+
+   <SolidColorBrush x:Key="AccentBrush"        Color="#3DA8E5"/>
+   <SolidColorBrush x:Key="AccentHoverBrush"   Color="#1F8FD0"/>
+   <SolidColorBrush x:Key="AccentDarkBrush"    Color="#0E639C"/>
+   <SolidColorBrush x:Key="AccentPressedBrush" Color="#094771"/>
+
+   <!-- Tooltip: light parchment surface for code-style previews. Kept separate
+        from PanelBackground so it can stay light even in dark mode without
+        affecting other surfaces. -->
+   <SolidColorBrush x:Key="TooltipBackgroundBrush" Color="#F4F1E9"/>
+   <SolidColorBrush x:Key="TooltipTextBrush"       Color="#101010"/>
+
+</ResourceDictionary>
