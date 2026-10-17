@@ -26,6 +26,13 @@ public static class AppInfo
    /// <summary>Semantic version, e.g. "0.0.1". Falls back to "0.0.0" if unreadable.</summary>
    public static string Version => s_version;
 
+   /// <summary>
+   /// True for builds from the dev branch (version "x.y.z-dev", stamped by the
+   /// .csproj). These never self-update, so an IDE build is never replaced by
+   /// a release package.
+   /// </summary>
+   public static bool IsDevBuild => s_version.EndsWith("-dev", System.StringComparison.OrdinalIgnoreCase);
+
    /// <summary>"SlimCode Desktop 0.0.1" — convenience for titles.</summary>
    public static string NameWithVersion => Name + " " + Version;
 

@@ -23,6 +23,7 @@ public partial class App : Application
             var settings = AppSettingsStore.Load(AppPaths.AppSettingsFile).Values;
             AccentPalette.Apply(this,
                 AccentPalette.Resolve(settings.Accent, settings.AccentColorHex, AppPaths.Profile));
+            AppIcons.ApplyToAllWindows(this);
 
             desktop.MainWindow = new MainWindow();
         }

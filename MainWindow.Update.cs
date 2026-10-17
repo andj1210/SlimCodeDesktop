@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Shapes = Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SlimCodeDesktop.Core;
@@ -29,13 +31,36 @@ public partial class MainWindow
    {
       var panel = new StackPanel { Margin = new Thickness(0, 16, 0, 0), Spacing = 6 };
 
+      // Globe glyph: says "this goes online" before the user clicks. Drawn
+      // as a path (outline, meridian, three parallels) rather than an emoji,
+      // which the UI font may not carry.
+      var globe = new Shapes.Path
+      {
+         Data            = Geometry.Parse(
+            "M 8,0.75 A 7.25,7.25 0 1 0 8,15.25 A 7.25,7.25 0 1 0 8,0.75 Z "
+          + "M 8,0.75 A 3.25,7.25 0 1 0 8,15.25 A 3.25,7.25 0 1 0 8,0.75 Z "
+          + "M 0.75,8 H 15.25 M 2.1,4.3 H 13.9 M 2.1,11.7 H 13.9"),
+         StrokeThickness = 1.2,
+         Width           = 16,
+         Height          = 16,
+         Stretch         = Stretch.None,
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+
       var button = new Button
       {
-         Content             = "Check for updates",
+         Content = new StackPanel
+         {
+            Orientation = Orientation.Horizontal,
+            Spacing     = 6,
+            Children    = { globe, new TextBlock { Text = "Check for updates", VerticalAlignment = VerticalAlignment.Center } },
+         },
          FontSize            = 11,
-         Padding             = new Thickness(10, 3),
+         Padding             = new Thickness(10, 5),
          HorizontalAlignment = HorizontalAlignment.Left,
       };
+      // Follow the button's text color through hover / disabled states.
+      globe.Bind(Shapes.Shape.StrokeProperty, button.GetObservable(TemplatedControl.ForegroundProperty));
       ToolTip.SetTip(button, "Ask GitHub for the latest release of " + AppInfo.Name + ".");
 
       var status = new SelectableTextBlock
@@ -57,6 +82,14 @@ public partial class MainWindow
    {
       if (_updateBusy)
          return;
+
+      if (AppInfo.IsDevBuild)
+      {
+         status.Text      = "Dev build - no update check.";
+         status.IsVisible = true;
+         return;
+      }
+
       _updateBusy = true;
       button.IsEnabled = false;
 

@@ -16,15 +16,23 @@
 
   <!-- Custom title strip. Shown only where Platform.UseCustomTitleBar
        extends the client area (see MainWindow._ApplyTitleBar); Avalonia
-       draws the title text and caption buttons on top of it. Background
-       only: the whole strip is a window-drag region. -->
+       draws the title text and caption buttons on top of it, the text
+       shifted right to make room for the app icon (TitleTextIndent).
+       Not hit-testable: the whole strip is a window-drag region. -->
   <Border DockPanel.Dock="Top"
           x:Name="TitleBarStrip"
           IsVisible="False"
           IsHitTestVisible="False"
           Background="{DynamicResource TitleBarBackgroundBrush}"
           BorderBrush="{DynamicResource BorderColorBrush}"
-          BorderThickness="0,0,0,1"/>
+          BorderThickness="0,0,0,1">
+    <Image x:Name="TitleBarIcon"
+           Width="16" Height="16"
+           Margin="10,0,0,0"
+           HorizontalAlignment="Left"
+           VerticalAlignment="Center"
+           RenderOptions.BitmapInterpolationMode="HighQuality"/>
+  </Border>
 
   <Grid ColumnDefinitions="220,*">
 
@@ -81,10 +89,13 @@
           </Grid>
         </Border>
 
+        <!-- Bottom buttons stack upward from here (DockPanel.Dock=Bottom).
+             Each carries only a 4 px top margin, so the gaps stay even
+             whether or not the MCP button is visible. -->
         <Button DockPanel.Dock="Bottom"
                 x:Name="BtnAddBracket"
                 Content="Add Bracket…"
-                Margin="8,0,8,8"
+                Margin="8,4,8,8"
                 HorizontalAlignment="Stretch"
                 Click="BtnAddBracket_Click"/>
 
@@ -93,14 +104,14 @@
                 Content="Add MCP…"
                 IsVisible="False"
                 ToolTip.Tip="Add a project whose tools come from MCP servers instead of the built-in file / build / test tools."
-                Margin="8,6,8,0"
+                Margin="8,4,8,0"
                 HorizontalAlignment="Stretch"
                 Click="BtnAddMcp_Click"/>
 
         <Button DockPanel.Dock="Bottom"
                 x:Name="BtnAddFolder"
                 Content="Add Project…"
-                Margin="8,6,8,4"
+                Margin="8,6,8,0"
                 HorizontalAlignment="Stretch"
                 Click="BtnAddFolder_Click"/>
 

@@ -13,6 +13,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using SlimCodeDesktop.Agents;
 using SlimCodeDesktop.Agents.Settings;
@@ -86,8 +87,22 @@ public partial class MainWindow : Window
       if (!_customTitleBar) return;
 
       TitleBarStrip.Height = TITLE_BAR_HEIGHT;
+      TitleBarIcon.Source  = AppIcons.Small;
+
+      // Avalonia's drawn title text sits at the left edge of the decorations;
+      // push it right past the icon. The decorations are not part of this
+      // window's logical tree, so the style has to live at application level.
+      Application.Current?.Styles.Add(new Style(x => x.Name("PART_TitleTextPanel"))
+      {
+         Setters = { new Setter(MarginProperty, new Thickness(TITLE_TEXT_INDENT, 0, 0, 0)) },
+      });
+
       _UpdateChrome();
    }
+
+   // Left margin for Avalonia's title text, which adds ~12 px padding of its
+   // own: lands the text ~8 px right of the icon (10 px margin + 16 px icon).
+   private const double TITLE_TEXT_INDENT = 22;
 
    private bool _customTitleBar;
 
