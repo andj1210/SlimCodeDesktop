@@ -10,10 +10,12 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using System.IO;
 using SlimCodeDesktop.Agents.Native.Config;
 using SlimCodeDesktop.Agents.Native.Mcp;
 using SlimCodeDesktop.Agents.Native.Skills;
+using SlimCodeDesktop.Agents.Native.Tools;
 using SlimCodeDesktop.Core;
 using SlimCodeDesktop.Themes;
 
@@ -69,6 +71,10 @@ public partial class ProjectSettingsWindow : Window
 
       RebuildBuildRows();
       RebuildTestRows();
+      _folderRows.Clear();
+      foreach (var r in _working.FolderRules)
+         _folderRows.Add(new FolderRuleRow { Folder = r.Folder ?? "", Access = r.Access, AnyDepth = r.AnyDepth });
+      RebuildFolderRows();
       RebuildSkillRows();
       _RefreshProjectSkillsButton();
    }
@@ -123,6 +129,233 @@ public partial class ProjectSettingsWindow : Window
       FontStyle  = FontStyle.Italic,
       Margin     = new Thickness(4, 4),
    };
+
+   // -- folder access --------------------------------------------------------
+
+   private void RebuildFolderRows()
+   {
+      FolderRulesPanel.Children.Clear();
+      if (_folderRows.Count == 0)
+      {
+         FolderRulesPanel.Children.Add(new TextBlock
+         {
+            Text       = "(no rules — the agent's file tools can reach the whole project folder)",
+            Foreground = ThemeBrushes.TextMuted,
+            FontStyle  = FontStyle.Italic,
+            Margin     = new Thickness(4, 4),
+         });
+         return;
+      }
+
+      foreach (var row in _folderRows)
+         FolderRulesPanel.Children.Add(FolderRuleRowControl(row));
+   }
+
+   private Control FolderRuleRowControl(FolderRuleRow row)
+   {
+      var pathTb = new TextBox
+      {
+         Text              = row.Folder,
+         PlaceholderText   = "Project-relative folder (e.g. secrets or doc/private)",
+         FontFamily        = MONO,
+         Foreground        = ThemeBrushes.TextPrimary,
+         Background        = ThemeBrushes.PanelBackground,
+         CaretBrush        = ThemeBrushes.TextPrimary,
+         BorderBrush       = ThemeBrushes.BorderColor,
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+
+      var browseBtn = new Button
+      {
+         Content           = "Browse…",
+         Padding           = new Thickness(10, 2),
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+      ToolTip.SetTip(browseBtn, "Pick a folder inside the project.");
+
+      var accessCb = new ComboBox
+      {
+         ItemsSource = new List<ComboBoxItem>
+         {
+            new() { Content = "No access", Tag = FolderAccess.NoAccess },
+            new() { Content = "Read-only", Tag = FolderAccess.ReadOnly },
+         },
+         SelectedIndex     = row.Access == FolderAccess.ReadOnly ? 1 : 0,
+         MinWidth          = 120,
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+
+      var anyDepthChk = new CheckBox
+      {
+         IsChecked         = row.AnyDepth,
+         Content           = "Any depth",
+         FontSize          = 11,
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+      ToolTip.SetTip(anyDepthChk,
+         "Match this single name wherever it occurs in the project, not just at the given path.");
+
+      var delBtn = new Button
+      {
+         Content           = "✕",
+         Padding           = new Thickness(8, 2),
+         Foreground        = ThemeBrushes.TextPrimary,
+         Background        = ThemeBrushes.NeutralButtonBackground,
+         VerticalAlignment = VerticalAlignment.Center,
+      };
+
+      var statusTb = new TextBlock
+      {
+         FontSize     = 11,
+         TextWrapping = TextWrapping.Wrap,
+         Margin       = new Thickness(4, 2, 0, 0),
+         IsVisible    = false,
+      };
+
+      void Refresh()
+      {
+         browseBtn.IsEnabled = !row.AnyDepth;
+         var (msg, isError) = _ValidateFolderRow(row);
+         statusTb.Text       = msg ?? "";
+         statusTb.Foreground = isError ? FAIL_BRUSH : ThemeBrushes.TextMuted;
+         statusTb.IsVisible  = msg != null;
+         if (!_HasFolderRuleErrors())
+            TxtSaveError.IsVisible = false;
+      }
+
+      pathTb.TextChanged += (_, _) =>
+      {
+         row.Folder      = pathTb.Text ?? "";
+         row.BrowseError = null;
+         Refresh();
+      };
+      accessCb.SelectionChanged += (_, _) =>
+         row.Access = accessCb.SelectedItem is ComboBoxItem ci && ci.Tag is FolderAccess a ? a : FolderAccess.NoAccess;
+      anyDepthChk.IsCheckedChanged += (_, _) =>
+      {
+         row.AnyDepth = anyDepthChk.IsChecked == true;
+         Refresh();
+      };
+      browseBtn.Click += async (_, _) =>
+      {
+         var rel = await _PickProjectFolder();
+         if (rel == null)
+            return;
+         if (rel.Length == 0)
+         {
+            row.BrowseError = "the picked folder is outside the project";
+            Refresh();
+            return;
+         }
+         pathTb.Text = rel;
+      };
+      delBtn.Click += (_, _) =>
+      {
+         _folderRows.Remove(row);
+         RebuildFolderRows();
+         if (!_HasFolderRuleErrors())
+            TxtSaveError.IsVisible = false;
+      };
+      Refresh();
+
+      var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto") };
+      Grid.SetColumn(pathTb,      0);
+      Grid.SetColumn(browseBtn,   1);
+      Grid.SetColumn(accessCb,    2);
+      Grid.SetColumn(anyDepthChk, 3);
+      Grid.SetColumn(delBtn,      4);
+      browseBtn.Margin   = new Thickness(6, 0, 0, 0);
+      accessCb.Margin    = new Thickness(8, 0, 0, 0);
+      anyDepthChk.Margin = new Thickness(10, 0, 0, 0);
+      delBtn.Margin      = new Thickness(8, 0, 0, 0);
+      grid.Children.Add(pathTb);
+      grid.Children.Add(browseBtn);
+      grid.Children.Add(accessCb);
+      grid.Children.Add(anyDepthChk);
+      grid.Children.Add(delBtn);
+
+      var stack = new StackPanel { Margin = new Thickness(2, 3) };
+      stack.Children.Add(grid);
+      stack.Children.Add(statusTb);
+      return stack;
+   }
+
+   /// <summary>
+   /// Message for a row's status line: an error blocks Save, a note does
+   /// not. Validation is the policy's own constructor, so the dialog can't
+   /// accept a rule the session would then refuse.
+   /// </summary>
+   private (string? Message, bool IsError) _ValidateFolderRow(FolderRuleRow row)
+   {
+      if (row.BrowseError != null)
+         return (row.BrowseError, true);
+      if (string.IsNullOrWhiteSpace(row.Folder))
+         return (null, false);
+
+      try
+      {
+         _ = new FolderAccessPolicy(new[] { row.ToRule() });
+      }
+      catch (ArgumentException ex)
+      {
+         return (ex.Message, true);
+      }
+
+      if (row.AnyDepth || string.IsNullOrEmpty(_projectPath))
+         return (null, false);
+      bool exists;
+      try
+      {
+         exists = Directory.Exists(Path.Combine(_projectPath, row.Folder.Trim()));
+      }
+      catch
+      {
+         exists = false;
+      }
+      return exists ? (null, false) : ("folder does not exist (the rule still applies once it does)", false);
+   }
+
+   private bool _HasFolderRuleErrors()
+   {
+      foreach (var row in _folderRows)
+         if (_ValidateFolderRow(row).IsError)
+            return true;
+      return false;
+   }
+
+   /// <summary>Project-relative path of a picked folder; "" when it lies outside the project, null when cancelled.</summary>
+   private async Task<string?> _PickProjectFolder()
+   {
+      if (string.IsNullOrEmpty(_projectPath))
+         return null;
+
+      var opts = new FolderPickerOpenOptions { Title = "Pick a folder inside the project", AllowMultiple = false };
+      try
+      {
+         opts.SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(_projectPath);
+      }
+      catch { }
+
+      var result = await StorageProvider.OpenFolderPickerAsync(opts);
+      if (result.Count == 0)
+         return null;
+      var picked = result[0].TryGetLocalPath();
+      if (string.IsNullOrEmpty(picked))
+         return null;
+
+      var rel = Path.GetRelativePath(_projectPath, picked);
+      if (rel == ".")
+         return ".";
+      if (Path.IsPathRooted(rel) || rel == ".." || rel.StartsWith(".." + Path.DirectorySeparatorChar))
+         return "";
+      return rel.Replace('\\', '/');
+   }
+
+   private void BtnAddFolderRule_Click(object? sender, RoutedEventArgs e)
+   {
+      _folderRows.Add(new FolderRuleRow());
+      RebuildFolderRows();
+   }
 
    // -- skills ---------------------------------------------------------------
 
@@ -803,6 +1036,22 @@ public partial class ProjectSettingsWindow : Window
 
    private void BtnSave_Click(object? sender, RoutedEventArgs e)
    {
+      if (_working.Kind == ProjectKind.Code)
+      {
+         // Dropping a bad rule would leave its folder open while the user
+         // believes it is protected, so Save waits for a fix instead.
+         if (_HasFolderRuleErrors())
+         {
+            TxtSaveError.IsVisible = true;
+            return;
+         }
+         var rules = new List<FolderRule>();
+         foreach (var row in _folderRows)
+            if (!string.IsNullOrWhiteSpace(row.Folder))
+               rules.Add(row.ToRule());
+         _working.FolderRules = rules;
+      }
+
       _working.BuildTimeoutSec = NudBuildTimeout.Value is decimal b ? (int)b : 120;
       _working.TestTimeoutSec  = NudTestTimeout.Value  is decimal t ? (int)t : 120;
 
@@ -860,4 +1109,19 @@ public partial class ProjectSettingsWindow : Window
    // One writer per MCP server card, pulling the on-screen values into the
    // config object. Rebuilt with the rows.
    private readonly List<Action> _mcpCommits = new();
+
+   // Editable copies of the folder rules; FolderRule itself is immutable.
+   private readonly List<FolderRuleRow> _folderRows = new();
+
+   private sealed class FolderRuleRow
+   {
+      public string       Folder   { get; set; } = "";
+      public FolderAccess Access   { get; set; } = FolderAccess.NoAccess;
+      public bool         AnyDepth { get; set; }
+
+      /// <summary>Set when Browse picked a folder outside the project; cleared by typing.</summary>
+      public string? BrowseError { get; set; }
+
+      public FolderRule ToRule() => new(Folder.Trim(), Access, AnyDepth);
+   }
 }

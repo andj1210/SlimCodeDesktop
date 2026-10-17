@@ -190,8 +190,8 @@ public static class TimingViz
       var sb = new StringBuilder();
       var pre = FormatRate(uncachedPromptTokens, t.Prefill);
       var gen = FormatRate(completionTokens, t.Generation);
-      if (pre != null) _Line(sb, "prefill", pre, "measured, first token");
-      if (gen != null) _Line(sb, "decode", gen, "measured");
+      if (pre != null) _Line(sb, "prefill", pre, null);
+      if (gen != null) _Line(sb, "decode", gen, null);
 
       if (server.HasValue && server.Value.HasServerTimings)
       {

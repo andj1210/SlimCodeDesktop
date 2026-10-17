@@ -17,9 +17,11 @@ public enum FolderAccess
 
 /// <summary>
 /// One folder rule. <see cref="Folder"/> is project-relative; "" or "."
-/// addresses the project root itself.
+/// addresses the project root itself. With <see cref="AnyDepth"/> it is a
+/// single name instead, matching every entry of that name at any depth
+/// (".git" covers "sub/module/.git" too).
 /// </summary>
-public sealed record FolderRule(string Folder, FolderAccess Access);
+public sealed record FolderRule(string Folder, FolderAccess Access, bool AnyDepth = false);
 
 /// <summary>
 /// Per-folder narrowing inside the project root. Pure lookup over
@@ -29,7 +31,8 @@ public sealed record FolderRule(string Folder, FolderAccess Access);
 /// Semantics:
 /// <list type="bullet">
 ///   <item>Rules match whole path segments, anchored at the project root
-///         ("secret" covers "secret/x", not "secrets" or "src/secret").</item>
+///         ("secret" covers "secret/x", not "secrets" or "src/secret").
+///         Any-depth rules match one segment name wherever it occurs.</item>
 ///   <item>A rule covers its folder and everything below it.</item>
 ///   <item>The most restrictive matching rule wins: a deeper rule can
 ///         tighten, never loosen. <see cref="FolderAccess.Full"/> rules are
@@ -55,9 +58,10 @@ public sealed class FolderAccessPolicy
 
    /// <summary>
    /// Rules with explicit path semantics (tests exercise both on any host).
-   /// Throws <see cref="ArgumentException"/> for a rooted folder or one
-   /// containing "..": a rule that silently matches nothing would leave the
-   /// user believing a folder is protected.
+   /// Throws <see cref="ArgumentException"/> for a rooted folder, one
+   /// containing "..", or an any-depth rule that is not a single name: a
+   /// rule that silently matches nothing would leave the user believing a
+   /// folder is protected.
    /// </summary>
    public FolderAccessPolicy(IEnumerable<FolderRule> rules, bool windowsSemantics)
    {
@@ -65,21 +69,39 @@ public sealed class FolderAccessPolicy
 
       _windows = windowsSemantics;
       _cmp     = windowsSemantics ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-      _rules   = new Dictionary<string, FolderAccess>(
-                    windowsSemantics ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+      var comparer = windowsSemantics ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+      _rules   = new Dictionary<string, FolderAccess>(comparer);
+      _names   = new Dictionary<string, FolderAccess>(comparer);
 
       foreach (var rule in rules)
       {
          ArgumentNullException.ThrowIfNull(rule);
-         var key = _NormalizeRule(rule.Folder);
+         var key    = _NormalizeRule(rule.Folder);
+         var target = _rules;
+         if (rule.AnyDepth)
+         {
+            if (key.Length == 0 || key.Contains('/'))
+               throw new ArgumentException("any-depth rule must be a single folder name: " + rule.Folder);
+            target = _names;
+         }
          if (rule.Access == FolderAccess.Full)
             continue;
-         if (!_rules.TryGetValue(key, out var existing) || rule.Access > existing)
-            _rules[key] = rule.Access;
+         if (!target.TryGetValue(key, out var existing) || rule.Access > existing)
+            target[key] = rule.Access;
       }
    }
 
-   public bool IsEmpty => _rules.Count == 0;
+   public bool IsEmpty => _rules.Count == 0 && _names.Count == 0;
+
+   /// <summary>True when any-depth rules exist; writes to a folder then need <see cref="MatchesAnyDepth"/> on its content.</summary>
+   public bool HasAnyDepthRules => _names.Count > 0;
+
+   /// <summary>True when an entry called <paramref name="name"/> is restricted by an any-depth rule.</summary>
+   public bool MatchesAnyDepth(string name)
+   {
+      ArgumentNullException.ThrowIfNull(name);
+      return _names.Count > 0 && _names.ContainsKey(_Segment(name));
+   }
 
    /// <summary>
    /// Effective access at a project-relative path ("" = the root). The path
@@ -94,14 +116,18 @@ public sealed class FolderAccessPolicy
          key = key.Length == 0 ? seg : key + "/" + seg;
          if (_rules.TryGetValue(key, out var l) && l > level)
             level = l;
+         if (_names.TryGetValue(seg, out var n) && n > level)
+            level = n;
       }
       return level;
    }
 
    /// <summary>
-   /// True when a restricting rule sits strictly below
+   /// True when an anchored restricting rule sits strictly below
    /// <paramref name="relativePath"/>. Writing the path itself (delete /
    /// move of a folder) would then take the protected folder with it.
+   /// Any-depth rules are not covered: whether one matches below depends on
+   /// what is on disk (see <see cref="ToolContext.Resolve"/>).
    /// </summary>
    public bool HasRestrictionBelow(string relativePath)
    {
@@ -186,4 +212,5 @@ public sealed class FolderAccessPolicy
    private readonly bool                             _windows;
    private readonly StringComparison                 _cmp;
    private readonly Dictionary<string, FolderAccess> _rules;
+   private readonly Dictionary<string, FolderAccess> _names;
 }

@@ -209,6 +209,74 @@ public sealed class FolderAccessPolicyTests
       Assert.False(_Policy(false, ("docs/private", FolderAccess.NoAccess)).HasRestrictionBelow("DOCS"));
    }
 
+   // -- any-depth rules ------------------------------------------------------
+
+   [Theory]
+   [InlineData(".git",                 FolderAccess.NoAccess)]
+   [InlineData(".git/config",          FolderAccess.NoAccess)]
+   [InlineData("sub/module/.git",      FolderAccess.NoAccess)]   // gitfile of a submodule
+   [InlineData("sub/module/.git/HEAD", FolderAccess.NoAccess)]
+   [InlineData(".gitignore",           FolderAccess.Full)]
+   [InlineData("src/.github/x",        FolderAccess.Full)]
+   [InlineData("src/a.cs",             FolderAccess.Full)]
+   [InlineData("",                     FolderAccess.Full)]
+   public void AnyDepthRule_MatchesNameAnywhere(string path, FolderAccess expected)
+   {
+      foreach (var windows in s_bothSemantics)
+      {
+         var policy = new FolderAccessPolicy(new[] { new FolderRule(".git", FolderAccess.NoAccess, AnyDepth: true) }, windows);
+         Assert.Equal(expected, policy.AccessAt(path));
+      }
+   }
+
+   [Fact]
+   public void AnyDepthRule_StrictestWinsAgainstAnchored()
+   {
+      var policy = new FolderAccessPolicy(new[]
+      {
+         new FolderRule("vendor", FolderAccess.ReadOnly),
+         new FolderRule(".git",   FolderAccess.NoAccess, AnyDepth: true),
+      }, false);
+
+      Assert.Equal(FolderAccess.NoAccess, policy.AccessAt("vendor/lib/.git/x"));
+      Assert.Equal(FolderAccess.ReadOnly, policy.AccessAt("vendor/lib/a.c"));
+   }
+
+   [Theory]
+   [InlineData("a/.git")]
+   [InlineData(".")]
+   [InlineData("")]
+   [InlineData("../.git")]
+   public void AnyDepthRule_NotASingleName_Throws(string rule)
+   {
+      foreach (var windows in s_bothSemantics)
+         Assert.Throws<ArgumentException>(() =>
+            new FolderAccessPolicy(new[] { new FolderRule(rule, FolderAccess.NoAccess, AnyDepth: true) }, windows));
+   }
+
+   [Fact]
+   public void AnyDepthRule_MatchesAnyDepthAndFlags()
+   {
+      var policy = new FolderAccessPolicy(new[] { new FolderRule(".git", FolderAccess.NoAccess, AnyDepth: true) }, true);
+
+      Assert.False(policy.IsEmpty);
+      Assert.True (policy.HasAnyDepthRules);
+      Assert.True (policy.MatchesAnyDepth(".GIT"));
+      Assert.True (policy.MatchesAnyDepth(".git."));       // trailing dot dropped by Win32
+      Assert.False(policy.MatchesAnyDepth(".github"));
+      Assert.False(policy.HasRestrictionBelow(""));        // disk-dependent, see ToolContext
+      Assert.False(FolderAccessPolicy.Empty.HasAnyDepthRules);
+   }
+
+   [Fact]
+   public void AnyDepthRule_FullIsNoOp()
+   {
+      var policy = new FolderAccessPolicy(new[] { new FolderRule(".git", FolderAccess.Full, AnyDepth: true) }, false);
+
+      Assert.True (policy.IsEmpty);
+      Assert.False(policy.MatchesAnyDepth(".git"));
+   }
+
    // -- helpers --------------------------------------------------------------
 
    private static FolderAccessPolicy _Policy(bool windows, params (string Folder, FolderAccess Access)[] rules)

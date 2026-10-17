@@ -478,7 +478,59 @@ public sealed class ToolContextTests
       Assert.Empty(ctx.EnumerateFilesRecursive(tree.InProject("to-secret")));
    }
 
+   // -- any-depth rules on disk ----------------------------------------------
+
+   [Fact]
+   public void AnyDepth_WriteToFolderContainingMatch_IsProtectedBelow()
+   {
+      using var tree = new TempTree();
+      tree.WriteProjectFile("src/a.cs",              "");
+      tree.WriteProjectFile("lib/mod/.git",          "gitdir: x");   // submodule gitfile
+      tree.WriteProjectFile("other/.git/HEAD",       "");
+      tree.WriteProjectFile("plain/b.cs",            "");
+      var ctx = _AnyDepthCtx(tree);
+
+      _AssertDenied(PathDenial.ProtectedBelow, ctx.Resolve("lib",       PathAccess.Write));
+      _AssertDenied(PathDenial.ProtectedBelow, ctx.Resolve("lib/mod",   PathAccess.Write));
+      _AssertDenied(PathDenial.ProtectedBelow, ctx.Resolve("other",     PathAccess.Write));
+      _AssertDenied(PathDenial.ProtectedBelow, ctx.Resolve("",          PathAccess.Write));
+      _AssertDenied(PathDenial.NoAccess,       ctx.Resolve("lib/mod/.git", PathAccess.Read));
+      Assert.True(ctx.Resolve("plain",     PathAccess.Write).IsAllowed);
+      Assert.True(ctx.Resolve("src/a.cs",  PathAccess.Write).IsAllowed);
+      Assert.True(ctx.Resolve("new/dir",   PathAccess.Write).IsAllowed);
+      Assert.True(ctx.Resolve("lib",       PathAccess.Read).IsAllowed);
+   }
+
+   [Fact]
+   public void AnyDepth_LinkedFolderIsNotScanned()
+   {
+      using var tree = new TempTree();
+      tree.WriteProjectFile("repo/.git/HEAD", "");
+      tree.LinkDirectory(tree.InProject("to-repo"), tree.InProject("repo"));
+      var ctx = _AnyDepthCtx(tree);
+
+      // Writing the link (delete / move) only touches the link itself.
+      Assert.True(ctx.Resolve("to-repo", PathAccess.Write).IsAllowed);
+   }
+
+   [Fact]
+   public void AnyDepth_ListingHidesMatches()
+   {
+      using var tree = new TempTree();
+      tree.WriteProjectFile("a/.git/HEAD", "");
+      tree.WriteProjectFile("a/b.cs",      "");
+      var ctx = _AnyDepthCtx(tree);
+
+      Assert.Equal(new[] { "b.cs" }, _Names(ctx.ListVisible(tree.InProject("a"))));
+   }
+
    // -- helpers --------------------------------------------------------------
+
+   private static ToolContext _AnyDepthCtx(TempTree tree) =>
+      new(tree.Project, CancellationToken.None, new FolderAccessPolicy(new[]
+      {
+         new FolderRule(".git", FolderAccess.NoAccess, AnyDepth: true),
+      }));
 
    private static ToolContext _Ctx() => new(s_root, CancellationToken.None);
 

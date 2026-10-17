@@ -102,7 +102,7 @@ public partial class NativeAgentView
                    : ToolRegistry.CreateExplorationDefaults();
       if (kind == SubagentKind.Write)
          _RegisterProjectCommands(tools);
-      var ctx       = new ToolContext(_projectPath!, CancellationToken.None);
+      var ctx       = new ToolContext(_projectPath!, CancellationToken.None, _folderPolicy);
       var subPrompt = NativeAgentSettings.BuildSubagentSystemPrompt(_projectPath!, kind);
 
       // The gate is shared with the parent session, deliberately: a grant

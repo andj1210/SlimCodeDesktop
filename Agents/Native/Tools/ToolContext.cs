@@ -109,6 +109,9 @@ public sealed class ToolContext
             return PathResolution.Deny(denial);
       }
 
+      if (access == PathAccess.Write && _folders.HasAnyDepthRules && _ContainsAnyDepthMatch(full))
+         return PathResolution.Deny(PathDenial.ProtectedBelow);
+
       return PathResolution.Allow(full);
    }
 
@@ -260,6 +263,64 @@ public sealed class ToolContext
 
       var physical = _PhysicalPath(absPath);
       return physical == null ? null : _RelTo(physical, _realRoot);
+   }
+
+   /// <summary>
+   /// True when <paramref name="full"/> is a real directory with an entry
+   /// below it that an any-depth rule restricts. Writing the directory
+   /// (delete / move) would take that entry with it. Anchored rules are
+   /// lexical (<see cref="FolderAccessPolicy.HasRestrictionBelow"/>); a
+   /// name can sit anywhere, so this one has to look on disk. Links are
+   /// neither followed nor treated as containers: writing one only touches
+   /// the link. An unreadable subfolder counts as a match (fail closed).
+   /// </summary>
+   private bool _ContainsAnyDepthMatch(string full)
+   {
+      try
+      {
+         var attrs = File.GetAttributes(full);
+         if ((attrs & FileAttributes.Directory) == 0 || (attrs & FileAttributes.ReparsePoint) != 0)
+            return false;
+      }
+      catch
+      {
+         return false;
+      }
+
+      var stack = new Stack<string>();
+      stack.Push(full);
+      while (stack.Count > 0)
+      {
+         Cancel.ThrowIfCancellationRequested();
+         FileSystemInfo[] infos;
+         try
+         {
+            infos = new DirectoryInfo(stack.Pop()).GetFileSystemInfos();
+         }
+         catch
+         {
+            return true;
+         }
+
+         foreach (var info in infos)
+         {
+            if (_folders.MatchesAnyDepth(info.Name))
+               return true;
+
+            FileAttributes attrs;
+            try
+            {
+               attrs = info.Attributes;
+            }
+            catch
+            {
+               return true;
+            }
+            if ((attrs & FileAttributes.Directory) != 0 && (attrs & FileAttributes.ReparsePoint) == 0)
+               stack.Push(info.FullName);
+         }
+      }
+      return false;
    }
 
    private List<(VisibleEntry Entry, string Rel)> _Visible(string dir, string dirRel)

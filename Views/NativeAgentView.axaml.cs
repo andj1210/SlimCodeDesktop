@@ -517,7 +517,8 @@ public partial class NativeAgentView : UserControl
       var prov   = s.ResolveProvider(_selProvider);
       var client = new OpenAiCompatClient(prov?.BaseUrl ?? "", NullIfBlank(prov?.ApiKey));
       var tools  = _BuildToolRegistry(withTaskCallback: true);
-      var ctx    = new ToolContext(_projectPath!, CancellationToken.None);
+      _folderPolicy = ProjectConfigStore.LoadOrCreate(_projectPath!).Config.BuildFolderPolicy();
+      var ctx    = new ToolContext(_projectPath!, CancellationToken.None, _folderPolicy);
       // Keep the loop's registry around for view concerns: tool-card header
       // previews (ITool.ArgsPreview) and the tools bubble.
       _viewToolRegistry = tools;
@@ -703,6 +704,9 @@ public partial class NativeAgentView : UserControl
          store.Config.TestTimeoutSec  = updated.TestTimeoutSec;
          store.Config.AutoLoadSkills  = updated.AutoLoadSkills;
          store.Config.SkipSkillAnnouncement = updated.SkipSkillAnnouncement;
+         // Folder rules land on the next session: the live loop keeps the
+         // policy it was built with (see BuildLoop).
+         store.Config.FolderRules     = updated.FolderRules;
          // Kind is fixed at project creation; the dialog only ever reads it.
          store.Config.McpServers      = updated.McpServers;
          store.Save();
@@ -887,6 +891,11 @@ public partial class NativeAgentView : UserControl
    // card header previews + the tools bubble. Set by BuildLoop and at replay
    // start; never executed from here.
    private ToolRegistry? _viewToolRegistry;
+
+   // Folder rules of the current loop, read from project.json by BuildLoop.
+   // Subagents reuse them so a mid-session edit can't give a child other
+   // rules than its parent.
+   private FolderAccessPolicy _folderPolicy = FolderAccessPolicy.Empty;
 
    // System-message bubbles + the header toggle state. Bubbles are always
    // appended; _showSystemMessages gates their visibility (persists across

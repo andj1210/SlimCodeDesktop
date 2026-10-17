@@ -107,6 +107,9 @@ public partial class MainWindow
       try
       {
          var store = Agents.Native.Config.ProjectConfigStore.LoadOrCreate(path);
+         // A folder added before (and removed again) keeps its own rules.
+         if (kind == ProjectKind.Code && !File.Exists(store.FilePath))
+            store.Config.FolderRules = Agents.Native.Config.ProjectConfig.DefaultFolderRules();
          store.Config.Kind = kind;
          store.Save();
       }
@@ -469,6 +472,7 @@ public partial class MainWindow
          store.Config.TestTimeoutSec  = updated.TestTimeoutSec;
          store.Config.AutoLoadSkills  = updated.AutoLoadSkills;
          store.Config.SkipSkillAnnouncement = updated.SkipSkillAnnouncement;
+         store.Config.FolderRules     = updated.FolderRules;
          // Kind is deliberately not copied back: it is fixed when the project
          // is added (see _AddProject) and the dialog cannot change it.
          store.Config.McpServers      = updated.McpServers;

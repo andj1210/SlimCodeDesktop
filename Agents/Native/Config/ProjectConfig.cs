@@ -1,7 +1,9 @@
 // Copyright 2026 Andreas Jung
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System;
 using System.Collections.Generic;
+using SlimCodeDesktop.Agents.Native.Tools;
 using SlimCodeDesktop.Core;
 
 namespace SlimCodeDesktop.Agents.Native.Config;
@@ -174,6 +176,12 @@ public sealed class ProjectConfig
    /// </summary>
    public bool SkipSkillAnnouncement { get; set; }
 
+   /// <summary>
+   /// Per-folder narrowing of the file tools (see <see cref="FolderAccessPolicy"/>).
+   /// Build / test steps are not affected. Only read for a code project.
+   /// </summary>
+   public List<FolderRule> FolderRules { get; set; } = new();
+
    /// <summary>Per-step timeout (seconds) applied to each build step.</summary>
    public int BuildTimeoutSec { get; set; } = 120;
 
@@ -193,7 +201,34 @@ public sealed class ProjectConfig
       foreach (var s in TestSteps)  c.TestSteps.Add(s.Clone());
       foreach (var m in McpServers) c.McpServers.Add(m.Clone());
       c.AutoLoadSkills = new List<string>(AutoLoadSkills);
+      c.FolderRules    = new List<FolderRule>(FolderRules);
       return c;
+   }
+
+   /// <summary>Rules a newly added code project starts with. The user can edit or remove them.</summary>
+   public static List<FolderRule> DefaultFolderRules() => new()
+   {
+      new FolderRule(".git", FolderAccess.NoAccess, AnyDepth: true),
+   };
+
+   /// <summary>
+   /// The policy for this project's file tools. Rules that cannot be parsed
+   /// (only possible by hand-editing project.json; the setup dialog refuses
+   /// them) lock the whole project instead of being dropped: a dropped rule
+   /// would leave its folder open while the user believes it is protected.
+   /// </summary>
+   public FolderAccessPolicy BuildFolderPolicy()
+   {
+      if (Kind != ProjectKind.Code || FolderRules.Count == 0)
+         return FolderAccessPolicy.Empty;
+      try
+      {
+         return new FolderAccessPolicy(FolderRules);
+      }
+      catch (ArgumentException)
+      {
+         return new FolderAccessPolicy(new[] { new FolderRule(".", FolderAccess.NoAccess) });
+      }
    }
 
    /// <summary>True if any step carries a non-empty command.</summary>

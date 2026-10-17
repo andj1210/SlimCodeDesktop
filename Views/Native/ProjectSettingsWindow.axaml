@@ -102,6 +102,25 @@
                </StackPanel>
             </StackPanel>
 
+            <!-- Folder access -->
+            <StackPanel Spacing="6">
+               <TextBlock Text="Folder access" FontWeight="SemiBold" FontSize="13"/>
+               <TextBlock Text="Limit what the agent's file tools can see or change. 'No access' folders are hidden from listings and searches and can't be read or written; 'Read-only' folders can be read but not changed. A rule covers its folder and everything below it; the stricter rule wins. 'Any depth' matches a single name anywhere in the project (e.g. .git in submodules). Build / test steps are not affected."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"/>
+               <Border BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
+                  <StackPanel x:Name="FolderRulesPanel" Spacing="2" Margin="6"/>
+               </Border>
+               <Button x:Name="BtnAddFolderRule" Content="+ Add folder rule"
+                       HorizontalAlignment="Left"
+                       Padding="10,4" Click="BtnAddFolderRule_Click"/>
+               <TextBlock Text="A rule also keeps the folders above it from being moved or deleted as a whole. Changes apply to new and resumed sessions."
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11"/>
+            </StackPanel>
+
             <!-- Skills -->
             <StackPanel Spacing="6">
                <TextBlock Text="Skills" FontWeight="SemiBold" FontSize="13"/>
@@ -135,6 +154,13 @@
 
       <!-- Footer -->
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+         <TextBlock Grid.Column="0" x:Name="TxtSaveError"
+                    Text="Fix the folder rules marked in red before saving."
+                    Foreground="#D86A6A"
+                    FontSize="11"
+                    VerticalAlignment="Center"
+                    TextWrapping="Wrap"
+                    IsVisible="False"/>
          <Button Grid.Column="1" x:Name="BtnCancel"
                  Content="Cancel"
                  Padding="14,4"

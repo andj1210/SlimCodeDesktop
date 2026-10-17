@@ -147,6 +147,11 @@ public sealed class CopyFileTool : ITool
          foreach (var entry in visible)
          {
             var entryRel = rel.Length == 0 ? entry.Name : Path.Combine(rel, entry.Name);
+            // A visible match is read-only; its copy would land in one too.
+            if (ctx.Folders.MatchesAnyDepth(entry.Name))
+               return ToolResult.Error(
+                  "destination would contain a read-only folder: " +
+                  ctx.ToRelative(Path.Combine(dst, entryRel)));
             if (entry.IsDirectory)
             {
                // Linked directories are not entered (see EnumerateFilesRecursive).
