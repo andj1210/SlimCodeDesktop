@@ -387,6 +387,11 @@ public partial class NativeAgentView
          newStore.AppendModelChange(forkModel, forkProvider);
       }
 
+      // The fork continues at the tab's current reasoning level, the same way
+      // it continues on the tab's current model.
+      if (_selReasoning != ReasoningLevel.Default)
+         newStore.AppendReasoningChange(_selReasoning);
+
       return newSessionId;
    }
 }

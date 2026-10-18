@@ -470,10 +470,11 @@ public partial class NativeAgentView : UserControl
 
       _RegisterProjectCommands(tools);
 
-      // Deny existence when no skills are configured for this project: the
-      // use_skill tool — and the catalog block — only appear once at least
-      // one skill is discovered. The resolver reads fresh per call so a
-      // newly-added skill becomes loadable without rebuilding the loop.
+      // Deny existence when no skills are discovered: the use_skill tool —
+      // and the catalog block — only appear once at least one exists. The
+      // intrinsic skills (IntrinsicSkills) make that every project in
+      // practice. The resolver reads fresh per call so a newly-added skill
+      // becomes loadable without rebuilding the loop.
       if (_DiscoverSkills().Count > 0)
          tools.Register(new UseSkillTool(_DiscoverSkills));
 

@@ -95,6 +95,19 @@ public sealed class TranscriptStore
    }
 
    /// <summary>
+   /// Persist the session's reasoning-level pick. On resume the latest such
+   /// record governs the level; absent any, the model's own default applies.
+   /// </summary>
+   public void AppendReasoningChange(Llm.ReasoningLevel level)
+   {
+      AppendRecord(new TranscriptRecord
+      {
+         Type      = "reasoning",
+         Reasoning = level.ToString(),
+      });
+   }
+
+   /// <summary>
    /// Persist the set of MCP tool names the model is being advertised. Written
    /// on an MCP session's first send and again whenever the set changes, so a
    /// later resume can diff against the last known list.

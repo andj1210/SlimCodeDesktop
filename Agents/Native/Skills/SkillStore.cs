@@ -14,7 +14,8 @@ namespace SlimCodeDesktop.Agents.Native.Skills;
 /// holding a <c>SKILL.md</c> (frontmatter + Markdown body). Layers, in
 /// ascending precedence:
 ///
-///   1. Global   — <c>%APPDATA%\SlimCode\&lt;profile&gt;\skills</c>
+///   0. Intrinsic — built into the app (<see cref="IntrinsicSkills"/>), no folder
+///   1. Global  — <c>%APPDATA%\SlimCode\&lt;profile&gt;\skills</c>
 ///   2. Extra    — built-in vendor roots (<c>%USERPROFILE%\.claude\skills</c>,
 ///                 <c>%USERPROFILE%\.qwen\skills</c>) plus user-configured roots
 ///   3. Project  — <c>&lt;project&gt;\&lt;folder&gt;\skills</c> for each folder in
@@ -43,6 +44,10 @@ public static class SkillStore
       // Keyed by name (case-insensitive); later scans overwrite earlier ones,
       // so we scan in ascending-precedence order to make Project win.
       var byName = new Dictionary<string, SkillInfo>(StringComparer.OrdinalIgnoreCase);
+
+      // Built-in skills first, so any on-disk skill of the same name shadows them.
+      foreach (var sk in IntrinsicSkills.For(projectPath))
+         byName[sk.Name] = sk;
 
       ScanRoot(GlobalSkillsDir(), SkillSource.Global, byName);
 

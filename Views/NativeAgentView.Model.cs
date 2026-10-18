@@ -396,9 +396,14 @@ public partial class NativeAgentView
       if (CmbReasoning?.SelectedItem is not ComboBoxItem it || it.Tag is not ReasoningLevel lvl)
          return;
 
+      if (lvl == _selReasoning) return;
       _selReasoning = lvl;
       if (_loop != null)
          _loop.Reasoning = lvl;
+
+      // Persisted so a resume (e.g. after an app restart) keeps the level.
+      // Before the first send there is no file yet; EnsureNewSession records it.
+      _transcriptStore?.AppendReasoningChange(lvl);
    }
 
    // One entry in the chat model picker: a (provider, model) pair shown with

@@ -101,6 +101,9 @@ public partial class NativeAgentView
       // restores it correctly. Without this, resume defaults to Implement
       // for sessions that never flipped mode mid-flight.
       store.AppendModeChange(_selectedMode);
+      // Same for a reasoning level picked before the first send.
+      if (_selReasoning != ReasoningLevel.Default)
+         store.AppendReasoningChange(_selReasoning);
       if (!string.IsNullOrEmpty(effectivePrompt))
       {
          store.AppendMessage(new ChatMessage
@@ -216,6 +219,9 @@ public partial class NativeAgentView
       string?   previousModel     = null;
       string?   previousProvider  = null;
       AgentMode effectiveMode     = AgentMode.Implement;
+      // No record = never picked, so the model's own default applies (and a
+      // level left over from this tab's previous session does not leak in).
+      ReasoningLevel effectiveReasoning = ReasoningLevel.Default;
 
       // Last-writer-wins map of persisted session-scope grants, replayed
       // into the gate after the walk so "Allow session" survives resume.
@@ -270,6 +276,12 @@ public partial class NativeAgentView
                effectiveMode = parsedMode;
                AppendItem(new NoticeLine("mode switched: " + prevMode + " → " + parsedMode));
             }
+            continue;
+         }
+         if (r.Type == "reasoning")
+         {
+            if (System.Enum.TryParse<ReasoningLevel>(r.Reasoning, out var parsedLevel))
+               effectiveReasoning = parsedLevel;
             continue;
          }
          if (r.Type == "mcpTools")
@@ -454,6 +466,8 @@ public partial class NativeAgentView
       // a resumed session must talk to the model with the exact instructions
       // it originally had, otherwise behavior drifts.
       _sessionSystemPrompt = metaPrompt;
+      // Before BuildLoop, which configures the loop's reasoning from it.
+      _selReasoning = effectiveReasoning;
       _loop = BuildLoop(_agent.Settings, history);
       SubscribePersistence(_loop);
 

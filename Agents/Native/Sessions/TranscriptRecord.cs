@@ -46,6 +46,12 @@ public sealed class TranscriptRecord
    [JsonPropertyName("mode")]         public string?   Mode { get; set; }
 
    /// <summary>
+   /// The session's chosen <c>ReasoningLevel</c> name ("Default", "High", …);
+   /// only present on Type="reasoning" records. Last one wins on resume.
+   /// </summary>
+   [JsonPropertyName("reasoning")]    public string?   Reasoning { get; set; }
+
+   /// <summary>
    /// Names of the MCP tools advertised to the model, on Type="mcpTools"
    /// records. One is written on the session's first send and again whenever
    /// the set changes, so a resume can diff what the servers offer NOW against

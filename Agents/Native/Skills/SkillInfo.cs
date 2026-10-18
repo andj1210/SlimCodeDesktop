@@ -12,6 +12,7 @@ public enum SkillSource
    Global  = 0,   // %APPDATA%\SlimCode\<profile>\skills
    Extra   = 1,   // user-configured extra search roots
    Project = 2,   // <project>\<folder>\skills, per AppSettings.ProjectSkillFolders (wins on a name clash)
+   Intrinsic = 3, // built into the app (IntrinsicSkills); lowest precedence, any on-disk skill shadows it
 }
 
 /// <summary>
@@ -43,8 +44,9 @@ public sealed class SkillInfo
    /// <summary>Human-readable source label for the discovery UI.</summary>
    public string SourceLabel => Source switch
    {
-      SkillSource.Project => "project",
-      SkillSource.Extra   => "extra",
+      SkillSource.Project   => "project",
+      SkillSource.Extra     => "extra",
+      SkillSource.Intrinsic => "intrinsic",
       _                   => "global",
    };
 
