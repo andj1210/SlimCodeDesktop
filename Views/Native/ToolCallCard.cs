@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using Avalonia;
@@ -11,6 +12,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using SlimCodeDesktop.Agents.Native;
 using SlimCodeDesktop.Agents.Native.Llm;
 using SlimCodeDesktop.Agents.Native.Tools;
 using SlimCodeDesktop.Themes;
@@ -179,8 +181,18 @@ public sealed class ToolCallCard : TranscriptItem
          SetExpanded(false);
       };
 
+      // Images the call handed the model (read_image). Outside the body so
+      // they stay visible on a collapsed card: what the model looked at is
+      // the point of the call.
+      _imagesHost = new ContentControl
+      {
+         Margin    = new Thickness(8, 0, 8, 0),
+         IsVisible = false,
+      };
+
       var stack = new StackPanel();
       stack.Children.Add(_header);
+      stack.Children.Add(_imagesHost);
       stack.Children.Add(_body);
 
       // Left-aligned + same MaxWidth as AssistantBubble so tool cards
@@ -211,6 +223,7 @@ public sealed class ToolCallCard : TranscriptItem
    internal static IBrush ToolNameBrush(string toolName) => toolName switch
    {
       "read_file" => s_green,
+      "read_image"=> s_green,
       "list_dir"  => s_green,
       "glob"      => s_cyan,
       "grep"      => s_cyan,
@@ -460,6 +473,19 @@ public sealed class ToolCallCard : TranscriptItem
       }
    }
 
+   /// <summary>Show the images this call delivered to the model as thumbnails.</summary>
+   public void SetImages(IReadOnlyList<ImagePart> images, Action<ImagePart>? onPreview)
+   {
+      if (images == null || images.Count == 0)
+      {
+         _imagesHost.Content   = null;
+         _imagesHost.IsVisible = false;
+         return;
+      }
+      _imagesHost.Content   = UserBubble.BuildThumbnails(images, onPreview);
+      _imagesHost.IsVisible = true;
+   }
+
    private void SetStatus(Status s)
    {
       (_iconTb.Text, _iconTb.Foreground) = s switch
@@ -649,6 +675,7 @@ public sealed class ToolCallCard : TranscriptItem
    private readonly Grid                 _headerGrid;
    private readonly Border               _header;
    private readonly Border               _body;
+   private readonly ContentControl       _imagesHost;
    private readonly ITool?               _tool;
    private bool                          _expanded;
    private string                        _basePreview = "";

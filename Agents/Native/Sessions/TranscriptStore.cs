@@ -176,11 +176,12 @@ public sealed class TranscriptStore
          if (img == null || string.IsNullOrEmpty(img.Base64)) continue;
          list.Add(new ImageRecord
          {
-            MediaType = img.MediaType,
-            Base64    = img.Base64,
-            Width     = img.Width,
-            Height    = img.Height,
-            FileName  = img.FileName,
+            MediaType  = img.MediaType,
+            Base64     = img.Base64,
+            Width      = img.Width,
+            Height     = img.Height,
+            FileName   = img.FileName,
+            ToolCallId = img.ToolCallId,
          });
       }
       return list.Count > 0 ? list : null;
@@ -196,11 +197,12 @@ public sealed class TranscriptStore
          if (img == null || string.IsNullOrEmpty(img.Base64)) continue;
          list.Add(new ImagePart
          {
-            MediaType = string.IsNullOrEmpty(img.MediaType) ? "image/png" : img.MediaType,
-            Base64    = img.Base64,
-            Width     = img.Width,
-            Height    = img.Height,
-            FileName  = img.FileName,
+            MediaType  = string.IsNullOrEmpty(img.MediaType) ? "image/png" : img.MediaType,
+            Base64     = img.Base64,
+            Width      = img.Width,
+            Height     = img.Height,
+            FileName   = img.FileName,
+            ToolCallId = img.ToolCallId,
          });
       }
       return list.Count > 0 ? list : null;
@@ -290,6 +292,7 @@ public sealed class TranscriptStore
          // default elsewhere and would clutter every assistant/user line.
          IsError          = (msg.Role == ChatRole.Tool && msg.IsError) ? true : (bool?)null,
          Images           = ToImageRecords(msg.Images),
+         ToolImages       = msg.IsToolImages ? true : (bool?)null,
          Timing           = ToTimingRecord(msg.Timings),
          Reads            = ToReadsRecord(msg.Reads),
       };

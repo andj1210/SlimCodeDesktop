@@ -324,6 +324,7 @@ public partial class NativeAgentView
             CacheWriteTokens = r.CacheWriteTokens,
             IsError          = r.IsError == true,
             Images           = TranscriptStore.ImagesFrom(r),
+            IsToolImages     = r.ToolImages == true,
             Timings          = TranscriptStore.TimingsFrom(r),
             Reads            = TranscriptStore.ReadsFrom(r),
          };
@@ -346,6 +347,13 @@ public partial class NativeAgentView
          switch (role)
          {
             case ChatRole.User:
+               // Tool-delivered images belong on the card of the call that
+               // produced them, not in a bubble the user never wrote.
+               if (msg.IsToolImages)
+               {
+                  _AttachToolImages(msg.Images, localCards);
+                  break;
+               }
                // Stamp the bubble with whatever mode was effective at the
                // time this user message was sent. The walk above tracks
                // mode-change records so this is "current" relative to

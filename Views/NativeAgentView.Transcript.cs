@@ -137,7 +137,11 @@ public partial class NativeAgentView
          UiPost(() =>
          {
             if (_toolCards.TryGetValue(id, out var card))
+            {
                card.SetResult(result);
+               if (result.Images is { Count: > 0 })
+                  card.SetImages(result.Images, _ShowImagePreview);
+            }
 
             // A model-loaded skill is now in context: reflect it in the picker.
             if (_skillCallArgNames.TryGetValue(id, out var skillName))
@@ -380,6 +384,31 @@ public partial class NativeAgentView
       var bubble = new UserBubble(text, mode, OnRevertRequested, images, _ShowImagePreview);
       _userBubbles.Add(bubble);
       AppendItem(bubble);
+   }
+
+   /// <summary>
+   /// Replay: hang the images of a tool-images turn on the cards of the calls
+   /// that produced them. An image whose card is gone (no call id, or the
+   /// call was never rendered) is dropped from the view — the model still
+   /// has it in history.
+   /// </summary>
+   private void _AttachToolImages(IReadOnlyList<ImagePart>? images,
+                                  IReadOnlyDictionary<string, ToolCallCard> cards)
+   {
+      if (images == null) return;
+      var byCall = new Dictionary<string, List<ImagePart>>();
+      foreach (var img in images)
+      {
+         if (string.IsNullOrEmpty(img.ToolCallId)) continue;
+         if (!byCall.TryGetValue(img.ToolCallId!, out var list))
+            byCall[img.ToolCallId!] = list = new List<ImagePart>();
+         list.Add(img);
+      }
+      foreach (var (callId, list) in byCall)
+      {
+         if (cards.TryGetValue(callId, out var card))
+            card.SetImages(list, _ShowImagePreview);
+      }
    }
 
    /// <summary>

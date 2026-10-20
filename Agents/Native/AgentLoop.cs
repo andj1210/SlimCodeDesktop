@@ -480,8 +480,22 @@ public sealed class AgentLoop
                   MessageAdded?.Invoke(toolMsg);
                   ToolTimingReported?.Invoke(call.Id, toolTiming);
                   ToolCallCompleted?.Invoke(call.Id, result);
+
+                  if (result.Images is { Count: > 0 })
+                  {
+                     foreach (var img in result.Images)
+                     {
+                        img.ToolCallId = call.Id;
+                        (_pendingToolImages ??= new List<ImagePart>()).Add(img);
+                     }
+                  }
                }
             }
+
+            // Images a tool produced go out as one user turn after the whole
+            // block of results: a tool message can't carry an image part, and
+            // templates expect a call's results to follow it back to back.
+            _FlushToolImages();
 
             // Surface stripped malformed-JSON calls: resolve their UI cards with
             // an error, then append one plain-text system note quoting the raw
@@ -512,6 +526,9 @@ public sealed class AgentLoop
       {
          finish = FinishReason.Error;
          _RepairDanglingToolCalls();
+         // Results that already said "the image follows" must not be left
+         // without it.
+         _FlushToolImages();
          Error?.Invoke("cancelled");
       }
       catch (Exception ex)
@@ -790,6 +807,35 @@ public sealed class AgentLoop
          MessageAdded?.Invoke(toolMsg);
          ToolCallCompleted?.Invoke(call.Id, result);
       }
+   }
+
+   // Append the images collected from this block of tool results as a single
+   // synthesized user turn (ChatMessage.IsToolImages). No-op when none were.
+   private void _FlushToolImages()
+   {
+      var images = _pendingToolImages;
+      _pendingToolImages = null;
+      if (images == null || images.Count == 0)
+         return;
+
+      var sb = new StringBuilder("[tool output] ");
+      sb.Append(images.Count == 1 ? "Image" : "Images")
+        .Append(" requested by the tool call(s) above:");
+      foreach (var img in images)
+      {
+         sb.Append("\n- ").Append(img.FileName ?? "image")
+           .Append(" (").Append(img.Width).Append('×').Append(img.Height).Append(')');
+      }
+
+      var msg = new ChatMessage
+      {
+         Role         = ChatRole.User,
+         Content      = sb.ToString(),
+         Images       = images,
+         IsToolImages = true,
+      };
+      _history.Add(msg);
+      MessageAdded?.Invoke(msg);
    }
 
    private static string SafeArgsPreview(ITool tool, JsonElement args)
@@ -1094,4 +1140,7 @@ public sealed class AgentLoop
    private readonly string            _systemPrompt;
    private readonly List<ChatMessage> _history = new();
    private readonly PermissionGate?   _gate;
+
+   // Images returned by the current block of tool calls, not yet delivered.
+   private List<ImagePart>?           _pendingToolImages;
 }

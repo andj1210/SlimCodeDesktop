@@ -89,7 +89,9 @@ public partial class NativeAgentView
       var revertedImages = bubble.Images;
 
       var forkId = _ForkAtRecord(
-         records => _FindNthMessage(records, "user", targetUserOrdinal, _ => true),
+         // Tool-image turns are user records without a bubble: skip them so
+         // the ordinal lines up with _userBubbles.
+         records => _FindNthMessage(records, "user", targetUserOrdinal, r => r.ToolImages != true),
          TranscriptStore.FORK_REVERT);
       if (forkId == null) return;
 
@@ -355,6 +357,7 @@ public partial class NativeAgentView
                   // attachments would resend as a different message than the
                   // one being branched from.
                   Images           = TranscriptStore.ImagesFrom(r),
+                  IsToolImages     = r.ToolImages == true,
                   Timings          = TranscriptStore.TimingsFrom(r),
                   Reads            = TranscriptStore.ReadsFrom(r),
                };

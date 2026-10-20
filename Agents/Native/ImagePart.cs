@@ -29,6 +29,13 @@ public sealed class ImagePart
    public string? FileName { get; set; }
 
    /// <summary>
+   /// Id of the tool call that produced this image, when a tool (read_image)
+   /// rather than the user attached it. Lets a replay hang the thumbnail on
+   /// the right tool card. Display only — never sent on the wire.
+   /// </summary>
+   public string? ToolCallId { get; set; }
+
+   /// <summary>
    /// The <c>data:</c> URL form expected by the OpenAI <c>image_url</c>
    /// content part. Local servers (llama.cpp with an <c>--mmproj</c>) and
    /// hosted providers both accept it, which is why nothing here ever

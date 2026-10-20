@@ -93,10 +93,11 @@ public sealed class GlobalPolicyStore
       var p = new PermissionPolicy();
       // Known read tools — explicit Allow keeps the audit log readable
       // ("global policy: Allow" reads better than "default: Allow").
-      p.Set("read_file", PermissionDecision.Allow);
-      p.Set("list_dir",  PermissionDecision.Allow);
-      p.Set("glob",      PermissionDecision.Allow);
-      p.Set("grep",      PermissionDecision.Allow);
+      p.Set("read_file",  PermissionDecision.Allow);
+      p.Set("read_image", PermissionDecision.Allow);
+      p.Set("list_dir",   PermissionDecision.Allow);
+      p.Set("glob",       PermissionDecision.Allow);
+      p.Set("grep",       PermissionDecision.Allow);
       // use_skill returns instruction text only (Read); a skill body can only
       // *instruct* the model — any write/build it suggests still hits the gate.
       p.Set("use_skill", PermissionDecision.Allow);

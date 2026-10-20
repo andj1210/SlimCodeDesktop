@@ -109,6 +109,15 @@ public static class ImageIngest
    /// </summary>
    public static bool TryLoadBytes(byte[] bytes, string? fileName, bool preferJpeg, SKRectI? crop,
                                    out ImagePart? image, out string? error)
+      => TryLoadBytes(bytes, fileName, preferJpeg, crop, MAX_PIXELS, out image, out error);
+
+   /// <summary>
+   /// As above, with an explicit pixel budget instead of <see cref="MAX_PIXELS"/>.
+   /// Exists for the read_image tool, where the model picks the trade-off
+   /// between detail and context cost itself.
+   /// </summary>
+   public static bool TryLoadBytes(byte[] bytes, string? fileName, bool preferJpeg, SKRectI? crop,
+                                   long maxPixels, out ImagePart? image, out string? error)
    {
       image = null;
       error = null;
@@ -130,7 +139,7 @@ public static class ImageIngest
          using var cropped = _Crop(decoded, crop);
          var full = cropped ?? decoded;
 
-         using var scaled = _Downscale(full);
+         using var scaled = _Downscale(full, maxPixels);
          var source = scaled ?? full;
 
          var format  = preferJpeg ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png;
@@ -188,13 +197,13 @@ public static class ImageIngest
 
    // Null when the image is already within budget — the caller then encodes
    // the original bitmap rather than a needless copy.
-   private static SKBitmap? _Downscale(SKBitmap src)
+   private static SKBitmap? _Downscale(SKBitmap src, long maxPixels)
    {
       long pixels = (long)src.Width * src.Height;
-      if (pixels <= MAX_PIXELS || src.Width <= 0 || src.Height <= 0)
+      if (pixels <= maxPixels || maxPixels <= 0 || src.Width <= 0 || src.Height <= 0)
          return null;
 
-      double factor = Math.Sqrt((double)MAX_PIXELS / pixels);
+      double factor = Math.Sqrt((double)maxPixels / pixels);
       int w = Math.Max(1, (int)Math.Round(src.Width  * factor));
       int h = Math.Max(1, (int)Math.Round(src.Height * factor));
 
@@ -202,6 +211,42 @@ public static class ImageIngest
       var sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
       return src.Resize(info, sampling);
    }
+
+   /// <summary>
+   /// Read size and encoding from the file header without decoding pixels.
+   /// Returns false with a short reason when the bytes aren't an image Skia
+   /// understands.
+   /// </summary>
+   public static bool TryProbe(byte[] bytes, out int width, out int height, out string format,
+                               out string? error)
+   {
+      width  = 0;
+      height = 0;
+      format = "";
+      error  = null;
+      try
+      {
+         using var data  = SKData.CreateCopy(bytes);
+         using var codec = SKCodec.Create(data);
+         if (codec == null)
+         {
+            error = "not a readable image";
+            return false;
+         }
+         width  = codec.Info.Width;
+         height = codec.Info.Height;
+         format = codec.EncodedFormat.ToString().ToUpperInvariant();
+         return true;
+      }
+      catch (Exception ex)
+      {
+         error = ex.Message;
+         return false;
+      }
+   }
+
+   /// <summary>True for .jpg / .jpeg — the sources that stay JPEG when re-encoded.</summary>
+   public static bool IsJpegPath(string path) => _IsJpegPath(path);
 
    private static bool _IsJpegPath(string path)
    {

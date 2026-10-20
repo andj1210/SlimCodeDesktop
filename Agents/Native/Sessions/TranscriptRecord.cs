@@ -112,6 +112,12 @@ public sealed class TranscriptRecord
    /// </summary>
    [JsonPropertyName("images")]     public List<ImageRecord>?    Images { get; set; }
 
+   /// <summary>
+   /// True on a user record the loop synthesized to deliver tool-produced
+   /// images (see <see cref="ChatMessage.IsToolImages"/>). Absent otherwise.
+   /// </summary>
+   [JsonPropertyName("toolImages")] public bool?                 ToolImages { get; set; }
+
    [JsonPropertyName("toolCalls")]  public List<ToolCallRecord>? ToolCalls { get; set; }
    [JsonPropertyName("toolCallId")] public string?               ToolCallId { get; set; }
 
@@ -170,6 +176,7 @@ public sealed class ImageRecord
    [JsonPropertyName("w")]         public int     Width { get; set; }
    [JsonPropertyName("h")]         public int     Height { get; set; }
    [JsonPropertyName("name")]      public string? FileName { get; set; }
+   [JsonPropertyName("callId")]    public string? ToolCallId { get; set; }
 }
 
 /// <summary>

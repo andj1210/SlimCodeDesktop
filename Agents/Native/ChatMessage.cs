@@ -58,6 +58,15 @@ public sealed class ChatMessage
    /// <summary>True when this turn carries at least one image.</summary>
    public bool HasImages => Images is { Count: > 0 };
 
+   /// <summary>
+   /// True on a user turn the loop synthesized to deliver images a tool
+   /// produced (read_image): a tool message cannot carry an image part, so
+   /// the pixels follow the tool results as a user turn. Not something the
+   /// user typed — the UI renders its images on the tool card instead of as
+   /// a user bubble, and revert / "first prompt" lookups skip it.
+   /// </summary>
+   public bool IsToolImages { get; set; }
+
    /// <summary>Non-null on an assistant turn that invoked tools.</summary>
    public List<ToolCall>? ToolCalls { get; set; }
 

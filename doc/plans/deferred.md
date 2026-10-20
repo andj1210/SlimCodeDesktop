@@ -8,20 +8,22 @@ think them through.
 ## Build/test output: better error extraction
 
 **Status:** deferred (current head+tail elision is good enough for now)
-**Logged:** 2026-05-22
+**Logged:** 2026-05-22 · **Reworded:** 2026-10-20 (matched to current code)
 
 ### Problem
 
-`ProjectCommandTool`'s `Smart` mode, on failure, returns the captured output
-with the middle elided (first 120 + last 40 lines). This assumes errors live at
-the ends. A multi-translation-unit compile breaks that: lots of "compiling X… ok"
-noise at the start and a summary at the end, with the actual error (`error C2065`,
-etc.) buried in the **middle** — exactly the part elision drops. Head+tail can
-silently lose the one line that matters.
+`ProjectCommandTool` attaches a step's log when the step fails (or opts in via
+`LogOnSucceed`) and shrinks it with `ShellRunner.Elide`: first 120 + last 40
+lines, each end additionally clamped to 30 000 / 10 000 chars. This assumes
+errors live at the ends. A multi-translation-unit compile breaks that: lots of
+"compiling X… ok" noise at the start and a summary at the end, with the actual
+error (`error C2065`, etc.) buried in the **middle** — exactly the part elision
+drops. Head+tail can silently lose the one line that matters.
 
-Kept as-is for now because: the 100 KB capture cap means elision only triggers on
-genuinely long output (>~160 lines), and the failure mode is "model sees fewer
-errors," not "model is misled."
+Kept as-is for now because: elision only triggers on genuinely long output
+(>~160 lines), and the failure mode is "model sees fewer errors," not "model is
+misled." (The capture itself is bounded separately at 10 M chars in
+`ShellRunner`; that limit is about memory, not context.)
 
 ### Idea A — two-pass build-on-error (relies on incremental builds)
 
@@ -49,8 +51,9 @@ errors," not "model is misled."
   hit; collapse the "ok" runs between hits.
 - **Fallback:** if zero markers match (unknown toolchain / odd formatting), fall
   back to head+tail so we never return empty error context.
-- Likely shipped as a third `CommandOutputMode` (`Full` / `Smart` / `Errors`) so
-  the modes can be compared on real output.
+- There is no output-mode switch today (the elision is unconditional). Likely
+  shipped as a per-project or per-step option (head+tail vs. error-focused), so
+  the two can be compared on real output.
 - Still a heuristic, but cheap and degrades gracefully — much lighter than a
   per-compiler parser, which would be over-engineering.
 
@@ -66,12 +69,13 @@ practice.
 ## System-prompt refresh on revert/fork
 
 **Status:** deferred (needs more design thought)
-**Logged:** 2026-05-22
+**Logged:** 2026-05-22 · **Reworded:** 2026-10-20 (forks now also come from branch/regenerate)
 
 ### Goal
 
-When forking a session (the `↶` revert button), optionally refresh the frozen
-system prompt instead of carrying the original one forward verbatim. Recompute a
+When forking a session — the `↶` revert on a user bubble, or branch/regenerate
+on an assistant bubble — optionally refresh the frozen system prompt instead of
+carrying the original one forward verbatim. Recompute a
 candidate prompt from current settings; if it differs *materially* from the
 frozen one, inject the refreshed prompt at the start of the forked session.
 
@@ -88,8 +92,11 @@ text after an app upgrade, project folder, configured build/test commands, etc.)
   `Initial mode: …`).
 - It is frozen at session creation into BOTH the `meta` record and a
   `Type="msg" / Role="system"` record, and replayed verbatim on resume.
-- `OnRevertRequested` (fork) currently carries the original frozen prompt
-  forward unchanged.
+- Both fork paths, `OnRevertRequested` and `OnBranchRequested`
+  (`NativeAgentView.Branching.cs`), go through `_ForkAtRecord`, which writes a
+  fresh meta record with the original frozen prompt and re-emits the history
+  (including the system msg) unchanged. That shared function is the one place a
+  refresh would go, covering both.
 
 ### Why it's fiddly (the honest assessment)
 
@@ -103,7 +110,11 @@ text after an app upgrade, project folder, configured build/test commands, etc.)
      This is the only version worth shipping.
 2. **The prompt lives in two places** (meta record + system msg in history). A
    refresh must update both coherently or they desync (model sees one prompt,
-   meta claims another). The fork path re-emits both today.
+   meta claims another). `_ForkAtRecord` re-emits both today.
+3. **Regenerate re-runs immediately.** A branch fork calls `ContinueAsync` right
+   after the resume, so any refresh must be in place before that first request —
+   and it changes what "regenerate against the identical context" means, since
+   the context then isn't identical any more.
 
 ### Cleaner alternative (front-runner)
 
@@ -112,7 +123,9 @@ build/test commands." That needs no base-prompt surgery:
 
 - **On fork, if the project's command set changed, inject a small
   `[Project commands] …` system message** via the existing `AppendSystemMessage`
-  mechanism (same pattern as mode-switch announcements).
+  mechanism (same pattern as mode-switch announcements). Probably only for
+  revert, where the user writes the next turn anyway; regenerate is meant to
+  re-run against the same context.
 - No string masking, no prompt-format coupling, no meta/history desync (additive
   record), and date/time never enters the picture so the cache concern is moot.
 - Trade-off: does NOT refresh the base prompt text across app upgrades — which is
@@ -233,3 +246,59 @@ consider suggestions-only (no squiggles) as a cheap first stage.
 
 The same tokenizer would be reusable for coloring the `edit_file` diff view in
 `ToolCallCard` (shipped 2026-06; currently plain red/green line tinting).
+
+---
+
+## On-demand tool schemas (keep rarely used tools out of the catalog)
+
+**Status:** deferred (opt in once the tool catalog grows unreasonably large)
+**Logged:** 2026-10-20
+
+### Problem
+
+SlimCode is committed to a non-shell harness: capabilities come as dedicated
+tools rather than "run this command". Every tool's schema rides along in every
+request, so the catalog grows with each feature. The concern is **context fill**
+(and tool-choice quality on small local models), not prompt processing time —
+llama.cpp caches the static prefix anyway.
+
+### Idea
+
+Keep the essential tools (read/edit/write/grep/glob/bash/...) fully announced.
+Rarely used tools get only a one-line catalog entry in the system prompt:
+
+```
+Additional tools, load their exact syntax with load_tool first:
+- image_read: look at an image file (screenshots, diagrams, UI)
+```
+
+The entry must say *when* to use the tool, not just its name — a bare name won't
+make a small model reach for it. Same progressive-disclosure pattern as
+`use_skill`.
+
+### Catch: the model must still be able to *call* the tool
+
+Reading the syntax is half of it. llama-server parses tool calls against the
+request's `tools` array and likely rejects unknown names. Options:
+
+- **A — sticky load:** `load_tool("image_read")` returns the description, and
+  from the next request on the tool is in the `tools` array for the rest of the
+  session. Native schema validation stays. Cost: changing `tools` breaks the
+  cached prefix once per loaded tool. Loaded tools must be recorded in the
+  transcript so a resumed session rebuilds the same array (otherwise replayed
+  calls don't match).
+- **B — generic dispatcher:** one fixed `extended_tool(name, args)` tool that
+  dispatches on `name`. The `tools` array never changes, so the cache never
+  breaks and llama.cpp is happy. Declare `args` as a free-form JSON **object**,
+  not a JSON-in-a-string `args_json` — nested escaping is where small models
+  fail. Trade-off: no server-side schema constraint on `args`; validation moves
+  into the tool and errors must be good enough to self-correct.
+
+Either way: calling a deferred tool before loading it should return its schema
+in the error (and, for A, load it), so a model that skips the step loses one
+round, not the task. Avoid the name `help` — models will call it for general
+questions.
+
+### Note
+
+Not worth it while the catalog is a dozen essential tools. Revisit when it isn't.

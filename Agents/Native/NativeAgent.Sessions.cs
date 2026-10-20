@@ -226,7 +226,7 @@ public sealed partial class NativeAgent
             // Blank clears a previously set caption.
             caption = string.IsNullOrWhiteSpace(r.Title) ? null : r.Title!.Trim();
          }
-         else if (r.Type == "msg" && r.Role == "user" && firstUserPrompt == null)
+         else if (r.Type == "msg" && r.Role == "user" && r.ToolImages != true && firstUserPrompt == null)
          {
             firstUserPrompt = r.Content;
          }

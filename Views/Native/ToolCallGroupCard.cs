@@ -228,6 +228,7 @@ public sealed class ToolCallGroupCard : TranscriptItem
       "start_subagent"       => 2,   // former name of the read tool
       "start_write_subagent" => 3,
       "read_file"  => 1,
+      "read_image" => 1,
       "list_dir"   => 1,
       _            => 0,
    };

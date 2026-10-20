@@ -390,7 +390,7 @@ public partial class MainWindow
             model    = r.Model;
             provider = r.Provider;
          }
-         else if (r.Type == "msg" && r.Role == "user" && prompt == null)
+         else if (r.Type == "msg" && r.Role == "user" && r.ToolImages != true && prompt == null)
          {
             prompt = r.Content;
          }

@@ -80,7 +80,7 @@ public sealed class UserBubble : TranscriptItem
       var stack = new StackPanel();
       stack.Children.Add(modeBadge);
       if (Images.Count > 0)
-         stack.Children.Add(_BuildThumbnails(Images, onPreview));
+         stack.Children.Add(BuildThumbnails(Images, onPreview));
       stack.Children.Add(content);
       Control bubbleChild = stack;
 
@@ -153,7 +153,8 @@ public sealed class UserBubble : TranscriptItem
    // Attachments sit above the prompt text, matching the order they were
    // staged in below the input box. Sized generously enough that a screenshot
    // is recognizable without opening anything, and wrapped so several fit.
-   private static Control _BuildThumbnails(IReadOnlyList<ImagePart> images, Action<ImagePart>? onPreview)
+   // Shared with ToolCallCard, which shows what read_image handed the model.
+   internal static Control BuildThumbnails(IReadOnlyList<ImagePart> images, Action<ImagePart>? onPreview)
    {
       var panel = new WrapPanel
       {
