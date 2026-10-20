@@ -97,6 +97,36 @@ public sealed class FileToolSandboxTests : IDisposable
       Assert.Contains(MARK, res.Content);
    }
 
+   // -- read_image -----------------------------------------------------------
+
+   [Theory]
+   [InlineData("secret/key.png")]
+   [InlineData("link/leak.png")]
+   [InlineData("../outside/leak.png")]
+   public async Task ReadImage_Denied(string path)
+   {
+      _WriteImages();
+
+      var res = await _Run(new ReadImageTool(), new { path, mode = "info" });
+
+      _AssertDenied(res);
+      Assert.DoesNotContain("source pixels", res.Content);
+   }
+
+   [Theory]
+   [InlineData("docs/a.png")]         // ReadOnly still reads
+   [InlineData("vault/inner/v.png")]
+   [InlineData("src/a.png")]
+   public async Task ReadImage_Allowed(string path)
+   {
+      _WriteImages();
+
+      var res = await _Run(new ReadImageTool(), new { path, mode = "info" });
+
+      Assert.False(res.IsError, res.Content);
+      Assert.Contains("1×1 source pixels", res.Content);
+   }
+
    // -- write_file -----------------------------------------------------------
 
    [Theory]
@@ -355,6 +385,15 @@ public sealed class FileToolSandboxTests : IDisposable
       return tool.ExecuteAsync(json, _ctx);
    }
 
+   /// <summary>A tiny PNG next to each text file, so a denial is the gate's, not "file not found".</summary>
+   private void _WriteImages()
+   {
+      var png = Convert.FromBase64String(PNG_1X1);
+      foreach (var rel in new[] { "src/a.png", "docs/a.png", "secret/key.png", "vault/inner/v.png" })
+         File.WriteAllBytes(_tree.InProject(rel), png);
+      File.WriteAllBytes(Path.Combine(_tree.Outside, "leak.png"), png);
+   }
+
    private static void _AssertDenied(ToolResult res)
    {
       Assert.True(res.IsError, "expected a denial, got: " + res.Content);
@@ -423,11 +462,15 @@ public sealed class FileToolSandboxTests : IDisposable
 
    private const string MARK = "SANDBOX_MARK";
 
+   /// <summary>A valid 1×1 RGBA PNG.</summary>
+   private const string PNG_1X1 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
    private static readonly HashSet<Type> s_covered = new()
    {
       typeof(ReadFileTool), typeof(WriteFileTool), typeof(EditFileTool), typeof(DeleteFileTool),
       typeof(MoveFileTool), typeof(ListDirTool),   typeof(GlobTool),     typeof(GrepTool),
-      typeof(CopyFileTool),
+      typeof(CopyFileTool), typeof(ReadImageTool),
    };
 
    private static readonly HashSet<string> s_pathArgs = new(StringComparer.OrdinalIgnoreCase)
