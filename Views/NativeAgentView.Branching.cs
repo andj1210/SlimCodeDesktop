@@ -360,6 +360,7 @@ public partial class NativeAgentView
                   IsToolImages     = r.ToolImages == true,
                   Timings          = TranscriptStore.TimingsFrom(r),
                   Reads            = TranscriptStore.ReadsFrom(r),
+                  Subagent         = TranscriptStore.SubagentFrom(r),
                };
                if (r.ToolCalls != null && r.ToolCalls.Count > 0)
                {

@@ -24,6 +24,17 @@ public sealed class ToolResult
    /// </summary>
    public List<ImagePart>? Images { get; init; }
 
+   /// <summary>
+   /// Set by a subagent call: the nested run's own phase breakdown. The loop
+   /// moves this much of the call's tool-exec time into the phases the
+   /// subagent actually spent it in, so delegated generation counts as
+   /// generation rather than as a slow tool.
+   /// </summary>
+   public Llm.PhaseTimings? NestedTimings { get; init; }
+
+   /// <summary>Set by a subagent call: the nested run's token totals.</summary>
+   public Llm.SubagentTokens? Subagent { get; init; }
+
    public static ToolResult Ok(string content) =>
       new() { IsError = false, Content = content };
 

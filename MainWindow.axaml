@@ -12,6 +12,8 @@
           BorderThickness="0"
           BorderBrush="{DynamicResource BorderColorBrush}">
 
+  <Grid>
+
   <DockPanel>
 
   <!-- Custom title strip. Shown only where Platform.UseCustomTitleBar
@@ -34,7 +36,7 @@
            RenderOptions.BitmapInterpolationMode="HighQuality"/>
   </Border>
 
-  <Grid ColumnDefinitions="220,*">
+  <Grid x:Name="MainContent" ColumnDefinitions="220,*">
 
     <!-- Sidebar: the pinned project list, or the session list of one project
          after drilling in (double-click / chevron on a project row).
@@ -185,17 +187,6 @@
         </Grid>
       </Border>
 
-      <!-- Configuration view: auto-generated from the agent's Options -->
-      <Border Grid.Row="1"
-              x:Name="ConfigView"
-              IsVisible="False"
-              Background="{DynamicResource WindowBackgroundBrush}"
-              Padding="20">
-        <ScrollViewer>
-          <StackPanel x:Name="ConfigPanel"/>
-        </ScrollViewer>
-      </Border>
-
       <!-- Sessions view: resumable history for the selected project. Also the
            startup / empty state — with no project selected it renders blank,
            which is what the right pane shows before anything is picked. -->
@@ -219,6 +210,58 @@
   </Grid>
 
   </DockPanel>
+
+  <!-- Configuration overlay: the settings card over the dimmed window, so
+       the session stays visible (and picks up accent changes live) behind
+       it. Spans the whole window and centers the card on it. The dim layer
+       leaves the title strip free (top margin set in _UpdateChrome) so the
+       window stays draggable; a click on it closes, as do Escape and ✕.
+       The card is a sibling of the dim layer, so clicks on it never reach
+       that handler. Tab navigation cycles inside the overlay rather than
+       wandering into the chat underneath. -->
+  <Grid x:Name="ConfigOverlay"
+        IsVisible="False"
+        Focusable="True"
+        KeyboardNavigation.TabNavigation="Cycle"
+        KeyDown="ConfigOverlay_KeyDown">
+    <Border x:Name="ConfigBackdrop"
+            Background="#A0000000"
+            PointerPressed="ConfigBackdrop_PointerPressed"/>
+    <!-- Stretch + Max size: a fixed card that shrinks with the window but
+         doesn't resize when switching between tabs of different heights. -->
+    <Border MaxWidth="1000"
+            MaxHeight="760"
+            Opacity="0.9"
+            Margin="48"
+            Background="{DynamicResource WindowBackgroundBrush}"
+            BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1"
+            CornerRadius="6"
+            BoxShadow="0 4 24 0 #80000000">
+      <!-- Header row stays put while the tab content scrolls. -->
+      <Grid RowDefinitions="Auto,*" Margin="20">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+          <TextBlock Grid.Column="0"
+                     Text="Configuration"
+                     Foreground="{DynamicResource AccentBrush}"
+                     FontSize="18"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"/>
+          <Button Grid.Column="1"
+                  Classes="bar"
+                  Content="✕"
+                  ToolTip.Tip="Close (Esc)"
+                  VerticalAlignment="Center"
+                  Click="BtnCloseConfig_Click"/>
+        </Grid>
+        <ScrollViewer Grid.Row="1">
+          <StackPanel x:Name="ConfigPanel"/>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+
+  </Grid>
 
   </Border>
 </Window>

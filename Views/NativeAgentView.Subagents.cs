@@ -182,8 +182,9 @@ public partial class NativeAgentView
                                  () => SubagentViewerRequested?.Invoke(run));
       });
 
-      // Subagent tokens count toward the session's cost totals but NOT the
-      // context gauge fill — they never occupy the parent's context window.
+      // Subagent tokens count toward the session's cost totals and stats but
+      // NOT the context gauge fill — they never occupy the parent's context
+      // window.
       run.UsageReported += usage => UiPost(() =>
       {
          _sumInput      += usage.PromptTokens;
@@ -192,6 +193,30 @@ public partial class NativeAgentView
          _sumReasoning  += usage.ReasoningTokens ?? 0;
          _sumCacheWrite += usage.CacheWriteTokens;
          Gauge.SetSessionTotals(_sumInput, _sumCached, _sumOutput, _sumReasoning, _sumCacheWrite);
+
+         _statOutputTokens    += usage.CompletionTokens;
+         _statReasoningTokens += usage.ReasoningTokens ?? 0;
+         _statUncachedInput   += usage.UncachedPromptTokens;
+         _RefreshStatsBars();
+      });
+      loop.AssistantMessageCompleted += msg =>
+      {
+         if (!msg.Reads.HasValue) return;
+         var reads = msg.Reads.Value;
+         UiPost(() =>
+         {
+            _sessionReads.Add(reads);
+            _RefreshStatsBars();
+         });
+      };
+
+      // The session bar follows the subagent's phases while the parent waits
+      // on it; see _subRunSoFar.
+      loop.PhaseChanged += (phase, runSoFar) => UiPost(() =>
+      {
+         _subLivePhase = phase;
+         _subRunSoFar  = runSoFar;
+         _RefreshStatsBars();
       });
 
       SubagentStarted?.Invoke(run);

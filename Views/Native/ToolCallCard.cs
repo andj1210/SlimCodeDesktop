@@ -428,7 +428,9 @@ public sealed class ToolCallCard : TranscriptItem
    /// <summary>
    /// Show how long the call took. Execution and the wait on a permission
    /// prompt are kept apart: "12 ms" for a plain call, "1.2 s · waited 48 s"
-   /// when the user had to approve it first.
+   /// when the user had to approve it first. A subagent call also carries
+   /// the nested run's model phases; they count as work and get the full
+   /// per-phase breakdown in the tooltip.
    /// </summary>
    public void SetTiming(PhaseTimings? timings)
    {
@@ -438,11 +440,18 @@ public sealed class ToolCallCard : TranscriptItem
          return;
       }
       var t = timings.Value;
-      var text = TimingViz.FormatDuration(t.ToolExec);
+      var text = TimingViz.FormatDuration(t.Busy - t.PermissionWait);
       if (t.PermissionWait > TimeSpan.Zero)
          text += " · waited " + TimingViz.FormatDuration(t.PermissionWait);
       _timingTb.Text      = text;
       _timingTb.IsVisible = true;
+
+      if (t.Prefill + t.Generation > TimeSpan.Zero)
+      {
+         ToolTip.SetTip(_timingTb, TimingViz.MonoTip(
+            TimingViz.PhaseTooltip("Subagent time", t, TurnPhase.Idle, TimeSpan.Zero, null)));
+         return;
+      }
       ToolTip.SetTip(_timingTb, TimingViz.MonoTip(
          "tool exec        " + TimingViz.FormatDuration(t.ToolExec).PadLeft(11)
          + (t.PermissionWait > TimeSpan.Zero

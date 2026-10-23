@@ -461,6 +461,8 @@ public sealed class AgentLoop
 
                   _unitTimings = default;
                   var result = await ExecuteOne(call, cancel).ConfigureAwait(false);
+                  if (result.NestedTimings.HasValue)
+                     _AdoptNestedTimings(result.NestedTimings.Value);
                   var toolTiming = _TakeUnitTimings();
 
                   // Prepend a warning when args were ignored for a no-arg tool
@@ -475,6 +477,7 @@ public sealed class AgentLoop
                      Content    = result.Content,
                      IsError    = result.IsError,
                      Timings    = toolTiming,
+                     Subagent   = result.Subagent,
                   };
                   _history.Add(toolMsg);
                   MessageAdded?.Invoke(toolMsg);
@@ -751,8 +754,8 @@ public sealed class AgentLoop
       // exposing the loop's token to the tool directly.
       var perCallCtx = new ToolContext(_toolContext.ProjectRoot, cancel, _toolContext.Folders);
 
-      // For a subagent tool this phase spans the whole nested run; the nested
-      // loop keeps its own clock, so nothing is counted twice at either level.
+      // For a subagent tool this phase spans the whole nested run; the run's
+      // own breakdown replaces it afterwards (see _AdoptNestedTimings).
       _EnterPhase(TurnPhase.ToolExec);
       try
       {
@@ -993,6 +996,25 @@ public sealed class AgentLoop
       var unit = _unitTimings;
       _unitTimings = default;
       return unit;
+   }
+
+   // A subagent call spent its tool-exec time in a nested loop, which kept
+   // its own per-phase clock. Re-files that much of the call's tool-exec as
+   // the phases the nested run measured, in both accumulators, so delegated
+   // prefill / generation reads as such. What remains in tool exec is the
+   // call's own overhead (building the run, distilling the report).
+   //
+   // Assumes the nested run fits inside this call's wall time, which holds
+   // while subagents run one at a time. Parallel subagents would sum to more
+   // than the wall time; the clamp only keeps tool exec from going negative.
+   private void _AdoptNestedTimings(in PhaseTimings nested)
+   {
+      _EnterPhase(_phase);
+      var moved = nested.Busy < _unitTimings.ToolExec ? nested.Busy : _unitTimings.ToolExec;
+      _unitTimings.ToolExec -= moved;
+      _runTimings.ToolExec  -= moved;
+      _unitTimings.Add(nested);
+      _runTimings.Add(nested);
    }
 
    // -- read accounting ------------------------------------------------------

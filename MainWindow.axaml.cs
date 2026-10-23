@@ -38,7 +38,9 @@ public partial class MainWindow : Window
 
    // Sessions doubles as the empty state: with no project selected it renders
    // blank, which is what the right pane shows before anything is picked.
-   private enum MainView { Config, Sessions, Native }
+   // Configuration is not a view of its own but an overlay above whichever
+   // one is shown (ShowConfig / HideConfig).
+   private enum MainView { Sessions, Native }
    private MainView _view = MainView.Sessions;
 
    // Cached per (agentId, projectPath). Dropped for a path when its session
@@ -114,6 +116,9 @@ public partial class MainWindow : Window
    private void _UpdateChrome()
    {
       TitleBarStrip.IsVisible = WindowState != WindowState.FullScreen;
+      // Keep the strip out from under the config dim layer: it's the
+      // window's drag region, and must stay hit-testable as such.
+      ConfigBackdrop.Margin = new Thickness(0, TitleBarStrip.IsVisible ? TITLE_BAR_HEIGHT : 0, 0, 0);
       WindowOutline.BorderThickness = WindowState == WindowState.Normal
          ? new Thickness(1)
          : new Thickness(0);
@@ -169,7 +174,7 @@ public partial class MainWindow : Window
    private void UpdateHeader()
    {
       // The project the right pane is about: the active tab's in the session
-      // view, the selected one in History (and Config, which keeps it).
+      // view, the selected one in History.
       string? path = _view == MainView.Native ? _activeTab?.ProjectPath : _selectedProjectPath;
       string? name = path != null ? _projects.DisplayLabel(path) : null;
 
@@ -181,7 +186,6 @@ public partial class MainWindow : Window
       // the place.
       (HeaderText.Text, HeaderDetail.Text) = _view switch
       {
-         MainView.Config                     => ("Configuration", ""),
          MainView.Sessions when name != null => (name, "History"),
          _                                   => ("", ""),
       };
@@ -198,24 +202,22 @@ public partial class MainWindow : Window
    private void SetMainView(MainView v)
    {
       _view = v;
-      ConfigView.IsVisible   = v == MainView.Config;
       SessionsView.IsVisible = v == MainView.Sessions;
       NativeHost.IsVisible   = v == MainView.Native;
 
       // Strip and bar-button highlights follow the view.
-      BtnToggleConfig.Classes.Set("active", v == MainView.Config);
       BtnHistory.Classes.Set("active", v == MainView.Sessions);
       RebuildTabStrip();
       UpdateHeader();
 
       // The tab host's visibility flip doesn't propagate an IsVisible change
-      // to the child view, so returning from Config/Sessions needs an
-      // explicit nudge to refresh the model combo / status line.
+      // to the child view, so returning from Sessions needs an explicit
+      // nudge to refresh the model combo / status line.
       if (v == MainView.Native)
          _activeTab?.Session?.NotifyBecameVisible();
    }
 
-   // What the right pane should show when we're not in Config:
+   // What the right pane should show by default:
    //  - active session tab -> Native
    //  - otherwise          -> Sessions (blank when no project is selected)
    private MainView DefaultMainView() =>
@@ -223,15 +225,50 @@ public partial class MainWindow : Window
 
    private void BtnToggleConfig_Click(object? sender, RoutedEventArgs e)
    {
-      if (_view == MainView.Config)
-      {
-         SetMainView(DefaultMainView());
-      }
-      else
-      {
-         RebuildConfigView();
-         SetMainView(MainView.Config);
-      }
+      if (ConfigOverlay.IsVisible) HideConfig();
+      else                         ShowConfig();
+   }
+
+   private void ShowConfig()
+   {
+      // Rebuilt on every open so the active agent's tab is preselected.
+      RebuildConfigView();
+      ConfigOverlay.IsVisible = true;
+      // Blur the window content (not the title strip) behind the card.
+      MainContent.Effect = new BlurEffect { Radius = 8 };
+      BtnToggleConfig.Classes.Set("active", true);
+      // Pull focus off the chat input underneath, so typing and Escape
+      // land in the overlay.
+      ConfigOverlay.Focus();
+   }
+
+   private void HideConfig()
+   {
+      if (!ConfigOverlay.IsVisible) return;
+
+      ConfigOverlay.IsVisible = false;
+      MainContent.Effect = null;
+      BtnToggleConfig.Classes.Set("active", false);
+      // Settings may have changed what the session shows (model list,
+      // reasoning levels); same refresh as returning to the tab.
+      if (_view == MainView.Native)
+         _activeTab?.Session?.NotifyBecameVisible();
+   }
+
+   private void BtnCloseConfig_Click(object? sender, RoutedEventArgs e) => HideConfig();
+
+   private void ConfigBackdrop_PointerPressed(object? sender, PointerPressedEventArgs e)
+   {
+      HideConfig();
+      e.Handled = true;
+   }
+
+   private void ConfigOverlay_KeyDown(object? sender, KeyEventArgs e)
+   {
+      // Bubble phase: an open ComboBox dropdown handles its own Escape first.
+      if (e.Key != Key.Escape) return;
+      HideConfig();
+      e.Handled = true;
    }
 
    /// <summary>

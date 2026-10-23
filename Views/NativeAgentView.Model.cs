@@ -182,6 +182,17 @@ public partial class NativeAgentView
       {
          foreach (var m in history)
          {
+            // A subagent's calls are billed like the parent's own; their
+            // totals ride on the delegating call's tool result.
+            if (m.Subagent.HasValue)
+            {
+               var s = m.Subagent.Value;
+               _sumInput      += s.PromptTokens;
+               _sumCached     += s.CachedReadTokens;
+               _sumOutput     += s.CompletionTokens;
+               _sumReasoning  += s.ReasoningTokens;
+               _sumCacheWrite += s.CacheWriteTokens;
+            }
             if (m.Role != ChatRole.Assistant) continue;
             _sumInput      += m.PromptTokens     ?? 0;
             _sumCached     += m.CachedReadTokens  ?? 0;
@@ -208,13 +219,22 @@ public partial class NativeAgentView
    private PhaseTimings _runSoFar;
    private TurnPhase    _livePhase = TurnPhase.Idle;
 
-   // Token provenance. The rate denominators count the MAIN loop only:
-   // subagent tokens are generated inside the parent's tool-exec phase and
-   // would corrupt a tokens-per-second over the parent's generation time.
+   // The subagent run in flight inside the parent's open tool-exec phase:
+   // its closed phases and its live one. The parent folds the run into its
+   // own timings when the call returns, so these only bridge the gap until
+   // the parent's next phase change. Null phase = no subagent in play;
+   // Idle = it finished and the parent has not caught up yet.
+   private PhaseTimings _subRunSoFar;
+   private TurnPhase?   _subLivePhase;
+
+   // Token provenance and rate numerators. Subagent calls count too: their
+   // time is filed under the regular phases (AgentLoop._AdoptNestedTimings),
+   // so their tokens belong over the same denominators. With a separate
+   // SubagentModel the session rate is a blend of both models.
    private TokenReads   _sessionReads;
-   private int          _mainOutputTokens;
-   private int          _mainReasoningTokens;
-   private int          _mainUncachedInput;
+   private int          _statOutputTokens;
+   private int          _statReasoningTokens;
+   private int          _statUncachedInput;
    private LlmUsage?    _lastUsage;
 
    private SegmentBar   _phaseBar = null!;
@@ -237,10 +257,12 @@ public partial class NativeAgentView
       _sessionTimings      = default;
       _runSoFar            = default;
       _livePhase           = TurnPhase.Idle;
+      _subRunSoFar         = default;
+      _subLivePhase        = null;
       _sessionReads        = default;
-      _mainOutputTokens    = 0;
-      _mainReasoningTokens = 0;
-      _mainUncachedInput   = 0;
+      _statOutputTokens    = 0;
+      _statReasoningTokens = 0;
+      _statUncachedInput   = 0;
       _lastUsage           = null;
       _RefreshStatsBars();
    }
@@ -253,38 +275,59 @@ public partial class NativeAgentView
       foreach (var m in history)
       {
          if (m.Timings.HasValue) _sessionTimings.Add(m.Timings.Value);
+         if (m.Subagent.HasValue)
+         {
+            var s = m.Subagent.Value;
+            _sessionReads.Add(s.Reads);
+            _statOutputTokens    += s.CompletionTokens;
+            _statReasoningTokens += s.ReasoningTokens;
+            _statUncachedInput   += s.UncachedPromptTokens;
+         }
          if (m.Role != ChatRole.Assistant) continue;
          if (m.Reads.HasValue) _sessionReads.Add(m.Reads.Value);
-         _mainOutputTokens    += m.CompletionTokens ?? 0;
-         _mainReasoningTokens += m.ReasoningTokens ?? 0;
-         _mainUncachedInput   += Math.Max(0, (m.PromptTokens ?? 0) - (m.CachedReadTokens ?? 0));
+         _statOutputTokens    += m.CompletionTokens ?? 0;
+         _statReasoningTokens += m.ReasoningTokens ?? 0;
+         _statUncachedInput   += Math.Max(0, (m.PromptTokens ?? 0) - (m.CachedReadTokens ?? 0));
       }
       _RefreshStatsBars();
    }
 
    private void _RefreshStatsBars()
    {
-      var shown = _sessionTimings;
-      shown.Add(_runSoFar);
-      _phaseBar.SetSegments(TimingViz.PhaseSegments(shown), TimingViz.PhaseIndex(_livePhase));
+      _phaseBar.SetSegments(TimingViz.PhaseSegments(_SettledTimings()),
+                            TimingViz.PhaseIndex(_ShownLivePhase()));
       _RefreshPhaseTooltip();
 
-      int think = _mainReasoningTokens;
-      int output = Math.Max(0, _mainOutputTokens - think);
+      int think = _statReasoningTokens;
+      int output = Math.Max(0, _statOutputTokens - think);
       _tokenBar.SetSegments(TimingViz.TokenSegments(_sessionReads, think, output));
-      _tokenBar.SetTooltip(TimingViz.TokenTooltip("Session tokens (main loop)", _sessionReads, think, output));
+      _tokenBar.SetTooltip(TimingViz.TokenTooltip("Session tokens (incl. subagents)", _sessionReads, think, output));
    }
 
    private void _RefreshPhaseTooltip()
    {
-      var settled = _sessionTimings;
-      settled.Add(_runSoFar);
+      var settled = _SettledTimings();
       var live = TimeSpan.FromSeconds(_phaseBar.LiveSeconds);
       // Rates over settled time only; a phase still open has no token count yet.
-      var rates = TimingViz.Rates(settled, _mainUncachedInput, _mainOutputTokens, null);
-      _phaseBar.SetTooltip(TimingViz.PhaseTooltip("Session time (main loop)", settled,
-                                                  _livePhase, live, rates));
+      var rates = TimingViz.Rates(settled, _statUncachedInput, _statOutputTokens, null);
+      _phaseBar.SetTooltip(TimingViz.PhaseTooltip("Session time (incl. subagents)", settled,
+                                                  _ShownLivePhase(), live, rates));
    }
+
+   // Every closed phase so far: settled runs, the run in flight, and the
+   // subagent the run is currently waiting on.
+   private PhaseTimings _SettledTimings()
+   {
+      var t = _sessionTimings;
+      t.Add(_runSoFar);
+      t.Add(_subRunSoFar);
+      return t;
+   }
+
+   // While a subagent runs, the parent sits in one long tool-exec phase; the
+   // phase actually growing is the subagent's. Once it has finished its time
+   // is in _subRunSoFar, so nothing grows until the parent moves on.
+   private TurnPhase _ShownLivePhase() => _subLivePhase ?? _livePhase;
 
    /// <summary>
    /// Attach the reasoning capability of the model this loop actually runs.

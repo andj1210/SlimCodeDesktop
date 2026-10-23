@@ -262,14 +262,45 @@ public sealed class TranscriptStore
    /// <summary>Rebuild the read accounting from a stored record. Null when it has none.</summary>
    public static Llm.TokenReads? ReadsFrom(TranscriptRecord r)
    {
-      var x = r.Reads;
-      if (x == null) return null;
-      return new Llm.TokenReads
+      return r.Reads != null ? FromReadsRecord(r.Reads) : null;
+   }
+
+   private static Llm.TokenReads FromReadsRecord(ReadsRecord x) => new()
+   {
+      Prompt      = x.Prompt,
+      ToolResults = x.ToolResults,
+      Images      = x.Images ?? 0,
+      Estimated   = x.Estimated == true,
+   };
+
+   private static SubagentRecord? ToSubagentRecord(Llm.SubagentTokens? tokens)
+   {
+      if (!tokens.HasValue || tokens.Value.IsEmpty) return null;
+      var t = tokens.Value;
+      return new SubagentRecord
       {
-         Prompt      = x.Prompt,
-         ToolResults = x.ToolResults,
-         Images      = x.Images ?? 0,
-         Estimated   = x.Estimated == true,
+         PromptTokens     = t.PromptTokens,
+         CachedReadTokens = t.CachedReadTokens > 0 ? t.CachedReadTokens : null,
+         CompletionTokens = t.CompletionTokens,
+         ReasoningTokens  = t.ReasoningTokens  > 0 ? t.ReasoningTokens  : null,
+         CacheWriteTokens = t.CacheWriteTokens > 0 ? t.CacheWriteTokens : null,
+         Reads            = t.Reads.IsEmpty ? null : ToReadsRecord(t.Reads),
+      };
+   }
+
+   /// <summary>Rebuild a subagent run's token totals from a stored record. Null when it has none.</summary>
+   public static Llm.SubagentTokens? SubagentFrom(TranscriptRecord r)
+   {
+      var x = r.Subagent;
+      if (x == null) return null;
+      return new Llm.SubagentTokens
+      {
+         PromptTokens     = x.PromptTokens,
+         CachedReadTokens = x.CachedReadTokens ?? 0,
+         CompletionTokens = x.CompletionTokens,
+         ReasoningTokens  = x.ReasoningTokens ?? 0,
+         CacheWriteTokens = x.CacheWriteTokens ?? 0,
+         Reads            = x.Reads != null ? FromReadsRecord(x.Reads) : default,
       };
    }
 
@@ -295,6 +326,7 @@ public sealed class TranscriptStore
          ToolImages       = msg.IsToolImages ? true : (bool?)null,
          Timing           = ToTimingRecord(msg.Timings),
          Reads            = ToReadsRecord(msg.Reads),
+         Subagent         = ToSubagentRecord(msg.Subagent),
       };
       if (msg.ToolCalls != null && msg.ToolCalls.Count > 0)
       {

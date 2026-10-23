@@ -177,9 +177,9 @@ public partial class NativeAgentView
 
             // Main-loop denominators for the session throughput figures.
             _lastUsage            = usage;
-            _mainOutputTokens    += usage.CompletionTokens;
-            _mainReasoningTokens += usage.ReasoningTokens ?? 0;
-            _mainUncachedInput   += usage.UncachedPromptTokens;
+            _statOutputTokens    += usage.CompletionTokens;
+            _statReasoningTokens += usage.ReasoningTokens ?? 0;
+            _statUncachedInput   += usage.UncachedPromptTokens;
 
             int cachedPct = usage.PromptTokens > 0
                ? (int)Math.Round(usage.CachedFraction * 100)
@@ -197,6 +197,9 @@ public partial class NativeAgentView
          {
             _livePhase = phase;
             _runSoFar  = runSoFar;
+            // Any finished subagent is folded into runSoFar by now.
+            _subRunSoFar  = default;
+            _subLivePhase = null;
             _RefreshStatsBars();
          });
 
@@ -211,8 +214,10 @@ public partial class NativeAgentView
          UiPost(() =>
          {
             _sessionTimings.Add(timings);
-            _runSoFar  = default;
-            _livePhase = TurnPhase.Idle;
+            _runSoFar     = default;
+            _livePhase    = TurnPhase.Idle;
+            _subRunSoFar  = default;
+            _subLivePhase = null;
             _RefreshStatsBars();
          });
 

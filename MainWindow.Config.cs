@@ -35,15 +35,6 @@ public partial class MainWindow
    {
       ConfigPanel.Children.Clear();
 
-      ConfigPanel.Children.Add(new TextBlock
-      {
-         Text = "Configuration",
-         Foreground = ThemeBrushes.Accent,
-         FontSize = 18,
-         FontWeight = FontWeight.Bold,
-         Margin = new Thickness(0, 0, 0, 12),
-      });
-
       var tabs = new TabControl
       {
          TabStripPlacement = Dock.Left,

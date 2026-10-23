@@ -159,6 +159,9 @@ public sealed class TranscriptRecord
    /// <summary>Non-generated tokens the call behind this assistant turn consumed.</summary>
    [JsonPropertyName("reads")] public ReadsRecord? Reads { get; set; }
 
+   /// <summary>Token totals of a subagent run, on its tool-result record only.</summary>
+   [JsonPropertyName("subagent")] public SubagentRecord? Subagent { get; set; }
+
    // -- perm (Type="perm") ---------------------------------------------------
 
    /// <summary>Tool name for a persisted session-scope permission grant.</summary>
@@ -202,6 +205,17 @@ public sealed class ReadsRecord
    [JsonPropertyName("tools")]     public int   ToolResults { get; set; }
    [JsonPropertyName("images")]    public int?  Images { get; set; }
    [JsonPropertyName("estimated")] public bool? Estimated { get; set; }
+}
+
+/// <summary>Serialized <see cref="Llm.SubagentTokens"/>.</summary>
+public sealed class SubagentRecord
+{
+   [JsonPropertyName("promptTokens")]     public int          PromptTokens { get; set; }
+   [JsonPropertyName("cachedReadTokens")] public int?         CachedReadTokens { get; set; }
+   [JsonPropertyName("completionTokens")] public int          CompletionTokens { get; set; }
+   [JsonPropertyName("reasoningTokens")]  public int?         ReasoningTokens { get; set; }
+   [JsonPropertyName("cacheWriteTokens")] public int?         CacheWriteTokens { get; set; }
+   [JsonPropertyName("reads")]            public ReadsRecord? Reads { get; set; }
 }
 
 /// <summary>Serialized form of one tool call (name + raw JSON arguments).</summary>

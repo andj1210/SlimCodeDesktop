@@ -62,9 +62,17 @@ public sealed class SubagentRun
       {
          TotalOutputTokens += usage.CompletionTokens;
          LastPromptTokens   = usage.PromptTokens;
+         _tokens.Add(usage);
          UsageReported?.Invoke(usage);
          Progress?.Invoke();
       };
+      Loop.AssistantMessageCompleted += msg =>
+      {
+         if (msg.Reads.HasValue) _tokens.Reads.Add(msg.Reads.Value);
+      };
+      // Fires inside Loop.RunAsync's finally, so it has landed by the time
+      // RunAsync below builds its result.
+      Loop.TurnTimingsReported += t => _timings = t;
       Loop.Error += msg => _lastError = msg;
    }
 
@@ -114,9 +122,25 @@ public sealed class SubagentRun
    /// Drive the nested loop to completion and distill the tool result: the
    /// subagent's final assistant message on success, an error (with partial
    /// report when one exists) on failure / abort / iteration cap. A write
-   /// run appends its change manifest on every path.
+   /// run appends its change manifest on every path, and every path carries
+   /// the run's timings and token totals for the parent's accounting.
    /// </summary>
    public async Task<ToolResult> RunAsync(CancellationToken cancel)
+   {
+      var result = await _RunCore(cancel).ConfigureAwait(false);
+      return new ToolResult
+      {
+         IsError       = result.IsError,
+         Content       = result.Content,
+         Images        = result.Images,
+         NestedTimings = _timings,
+         Subagent      = _tokens,
+      };
+   }
+
+   // -- private methods --------------------------------------------------------
+
+   private async Task<ToolResult> _RunCore(CancellationToken cancel)
    {
       // Own token, linked to the parent's: the host can stop this run alone
       // without touching the parent, while a parent cancel still reaches
@@ -165,8 +189,6 @@ public sealed class SubagentRun
 
       return ToolResult.Ok(_WithChanges(_Truncate(report!)));
    }
-
-   // -- private methods --------------------------------------------------------
 
    private static string _PartialSuffix(string? report) =>
       string.IsNullOrWhiteSpace(report)
@@ -271,6 +293,10 @@ public sealed class SubagentRun
    // -- fields -------------------------------------------------------------------
 
    private string? _lastError;
+
+   // Loop thread only, like the dictionaries below.
+   private PhaseTimings?  _timings;
+   private SubagentTokens _tokens;
 
    // Written and read on the nested loop's thread only (ToolCallReady and
    // ToolCallCompleted both fire there, in order).

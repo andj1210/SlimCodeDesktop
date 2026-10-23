@@ -118,10 +118,18 @@ public sealed class ChatMessage
    /// Wall-clock phases of the work that produced this message. On an
    /// assistant turn: prefill, thinking, output and tool-args time.
    /// On a tool result: permission wait and
-   /// execution time. Null on user / system messages and on turns recorded
+   /// execution time - plus, for a subagent call, every phase the nested run
+   /// went through. Null on user / system messages and on turns recorded
    /// before timing existed. Never sent on the wire.
    /// </summary>
    public Llm.PhaseTimings? Timings { get; set; }
+
+   /// <summary>
+   /// Token totals of the nested run, on the tool result of a subagent call
+   /// only. Kept apart from the per-turn token fields above, which describe
+   /// the parent's own calls and drive the context gauge. Never sent on the wire.
+   /// </summary>
+   public Llm.SubagentTokens? Subagent { get; set; }
 
    /// <summary>
    /// Non-generated tokens that entered the context for the call that
