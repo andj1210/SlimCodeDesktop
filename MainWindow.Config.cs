@@ -18,6 +18,7 @@ using SlimCodeDesktop.Agents;
 using SlimCodeDesktop.Agents.Settings;
 using SlimCodeDesktop.Core;
 using SlimCodeDesktop.Themes;
+using SlimCodeDesktop.Views.Native;
 using SlimCodeDesktop.Views.Native.Controls;
 
 namespace SlimCodeDesktop;
@@ -105,11 +106,10 @@ public partial class MainWindow
    {
       var panel = new StackPanel { Margin = new Thickness(16, 8, 8, 8), Spacing = 2 };
 
-      panel.Children.Add(new Image
+      // Drawn rather than the PNG: identical at rest, and with "Show Slimmy"
+      // on he tugs his hat now and then.
+      panel.Children.Add(new SlimmyGreeter(96)
       {
-         Source              = AppIcons.Large,
-         Width               = 96,
-         Height              = 96,
          HorizontalAlignment = HorizontalAlignment.Left,
          Margin              = new Thickness(0, 0, 0, 10),
       });

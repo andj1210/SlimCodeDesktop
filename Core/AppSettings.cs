@@ -73,4 +73,16 @@ public sealed class AppSettings
            + "On a name clash the earlier folder wins. The first folder is the one "
            + "'Create project skills folder' creates. Absolute paths are ignored.")]
    public string ProjectSkillFolders { get; set; } = ".ai";
+
+   /// <summary>
+   /// Off by default: a cartoon in the header is not what everyone wants
+   /// from a coding tool. Follows the OS "reduce motion" switch (Windows:
+   /// "Animation effects") by freezing every pose on a single frame.
+   /// </summary>
+   [Setting("Show Slimmy",
+      Help = "Shows the SlimCode agent as a small animated figure in the session "
+           + "header, acting out what the model is doing (reading the prompt, "
+           + "thinking, writing a tool call, waiting on a subagent). Holds still "
+           + "when the OS asks for reduced motion.")]
+   public bool ShowSlimmy { get; set; } = false;
 }

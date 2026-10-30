@@ -297,6 +297,7 @@ public partial class NativeAgentView
       _phaseBar.SetSegments(TimingViz.PhaseSegments(_SettledTimings()),
                             TimingViz.PhaseIndex(_ShownLivePhase()));
       _RefreshPhaseTooltip();
+      Slimmy.SetPhase(_livePhase, _subLivePhase);
 
       int think = _statReasoningTokens;
       int output = Math.Max(0, _statOutputTokens - think);

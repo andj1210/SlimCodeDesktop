@@ -62,6 +62,7 @@ public partial class NativeAgentView
          PermPanel.Configure(req);
          PermissionOverlay.IsVisible = true;
          PermPanel.FocusDefault();
+         Playground.Start();
          PromptPendingChanged?.Invoke(true);
       });
       // Loop cancelled (user hit Cancel / closed the tab) while the prompt
@@ -131,6 +132,7 @@ public partial class NativeAgentView
    {
       _pendingPrompt      = null;
       _promptFromSubagent = false;
+      Playground.Stop();
       if (PermissionOverlay.IsVisible)
       {
          PermissionOverlay.IsVisible = false;

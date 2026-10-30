@@ -18,7 +18,6 @@ public static class AppIcons
    private const string BaseUri = "avares://SlimCodeDesktop/assets/icon/";
 
    private static WindowIcon? s_window;
-   private static Bitmap?     s_large;
    private static Bitmap?     s_small;
 
    /// <summary>
@@ -28,9 +27,6 @@ public static class AppIcons
    /// </summary>
    public static WindowIcon Window =>
       s_window ??= new WindowIcon(_Open(OperatingSystem.IsWindows() ? "slimcode.ico" : "slimcode-256.png"));
-
-   /// <summary>256 px robot, for the About page.</summary>
-   public static Bitmap Large => s_large ??= new Bitmap(_Open("slimcode-256.png"));
 
    /// <summary>32 px simplified glyph, drawn at 16 px in the title bar.</summary>
    public static Bitmap Small => s_small ??= new Bitmap(_Open("slimcode-small-32.png"));

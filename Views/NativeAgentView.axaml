@@ -28,7 +28,7 @@
               BorderBrush="{DynamicResource BorderColorBrush}"
               BorderThickness="0,0,0,1"
               Padding="10,6">
-         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto">
+         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
             <TextBlock Grid.Column="0"
                        Text="Model:"
                        VerticalAlignment="Center"
@@ -78,7 +78,11 @@
                           FontSize="11"
                           TextTrimming="CharacterEllipsis"/>
             </DockPanel>
-            <ToggleButton Grid.Column="4" x:Name="TglSystem"
+            <!-- Slimmy acting out the live phase. Collapses (and stops its
+                 timer) unless the "Show Slimmy" app setting is on. -->
+            <native:SlimmyAvatar Grid.Column="4" x:Name="Slimmy"
+                                 Margin="0,0,6,0"/>
+            <ToggleButton Grid.Column="5" x:Name="TglSystem"
                           Content="sys"
                           FontSize="11"
                           Padding="8,2"
@@ -89,15 +93,15 @@
             <!-- Session statistics: time per phase on top, token provenance
                  (read vs written) below. Both are SegmentBars built in
                  code-behind; hover either for the figures. -->
-            <StackPanel Grid.Column="5" x:Name="PnlStats"
+            <StackPanel Grid.Column="6" x:Name="PnlStats"
                         Orientation="Vertical"
                         Spacing="3"
                         VerticalAlignment="Center"
                         Margin="0,0,10,0"/>
-            <native:ContextFillGauge Grid.Column="6" x:Name="Gauge"
+            <native:ContextFillGauge Grid.Column="7" x:Name="Gauge"
                                      VerticalAlignment="Center"
                                      Margin="0,0,8,0"/>
-            <Button Grid.Column="7" x:Name="BtnMenu"
+            <Button Grid.Column="8" x:Name="BtnMenu"
                     Content="≡"
                     FontSize="16"
                     Padding="10,0"
@@ -116,7 +120,7 @@
                   </MenuFlyout>
                </Button.Flyout>
             </Button>
-            <Button Grid.Column="8" x:Name="BtnClose"
+            <Button Grid.Column="9" x:Name="BtnClose"
                     Content="Close"
                     Padding="10,2"
                     ToolTip.Tip="End the active session (file stays on disk and is resumable from the project picker)."
@@ -333,17 +337,23 @@
            IsVisible="False"
            Background="#A0000000"
            Focusable="True">
-      <Border MaxWidth="640"
-              Margin="24"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              Background="{DynamicResource WindowBackgroundBrush}"
-              BorderBrush="{DynamicResource AccentBrush}"
-              BorderThickness="1"
-              CornerRadius="6"
-              BoxShadow="0 4 24 0 #80000000">
-         <native:PermissionPromptPanel x:Name="PermPanel"/>
-      </Border>
+      <Grid>
+         <Border x:Name="PermCard"
+                 MaxWidth="640"
+                 Margin="24"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Background="{DynamicResource WindowBackgroundBrush}"
+                 BorderBrush="{DynamicResource AccentBrush}"
+                 BorderThickness="1"
+                 CornerRadius="6"
+                 BoxShadow="0 4 24 0 #80000000">
+            <native:PermissionPromptPanel x:Name="PermPanel"/>
+         </Border>
+         <!-- Show Slimmy easter egg: a prompt left alone for a minute gets
+              a volleyball match played over it. Never takes input. -->
+         <native:SlimmyPlayground x:Name="Playground"/>
+      </Grid>
    </Border>
 
    </Grid>

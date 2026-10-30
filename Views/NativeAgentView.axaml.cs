@@ -85,6 +85,7 @@ public partial class NativeAgentView : UserControl
       // overlay Border is focusable so keyboard input can't leak through
       // to the (visually blocked) chat below.
       PermPanel.Completed += OnPromptCompleted;
+      Playground.Card      = PermCard;
       PermissionOverlay.AddHandler(KeyDownEvent, PermissionOverlay_KeyDown,
                                    RoutingStrategies.Tunnel,
                                    handledEventsToo: true);

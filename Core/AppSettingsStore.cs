@@ -1,6 +1,7 @@
 // Copyright 2026 Andreas Jung
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -67,7 +68,14 @@ public sealed class AppSettingsStore
    {
       desc.SetValue(Values, value);
       Save();
+      Changed?.Invoke();
    }
+
+   /// <summary>
+   /// Fires after <see cref="Set"/>, for views that apply a setting live
+   /// rather than reading it at their next natural refresh.
+   /// </summary>
+   public event Action? Changed;
 
    /// <summary>Reflected schema of <see cref="AppSettings"/>.</summary>
    public System.Collections.Generic.IReadOnlyList<SettingDescriptor> Options =>

@@ -87,6 +87,11 @@ public readonly record struct ShellCommand(
 //       IClipboard (which costs a real read). `token` is an opaque identity:
 //       compare it for equality, never order it.
 //
+//   bool PrefersReducedMotion()
+//       True when the user asked the OS for fewer animations. Decorative
+//       motion (Slimmy) then holds still. False where the OS offers no
+//       cheap way to ask.
+//
 //   string? RealPath(string existingPath)
 //       The physical, fully resolved absolute path of an EXISTING file or
 //       directory: every symlink / junction followed, short (8.3) names

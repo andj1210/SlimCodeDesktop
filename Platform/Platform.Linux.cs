@@ -91,6 +91,13 @@ public static class Platform
       }
    }
 
+   /// <summary>
+   /// No portable signal: GNOME keeps it in gsettings, KDE in its own config,
+   /// and neither is reachable without a D-Bus round trip. Animations stay
+   /// on; the app setting is the off switch.
+   /// </summary>
+   public static bool PrefersReducedMotion() => false;
+
    // -- private --------------------------------------------------------------
 
    [DllImport("libc", SetLastError = true)]

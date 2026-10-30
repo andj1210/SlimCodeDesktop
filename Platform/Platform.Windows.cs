@@ -188,9 +188,30 @@ public static class Platform
       return path;
    }
 
+   /// <summary>
+   /// "Animation effects" in Settings -> Accessibility -> Visual effects
+   /// (SPI_GETCLIENTAREAANIMATION). One user32 call, cheap enough to ask
+   /// whenever an animation is about to start, so a flip applies without a
+   /// restart.
+   /// </summary>
+   public static bool PrefersReducedMotion()
+   {
+      bool animate = true;
+      if (!SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, ref animate, 0))
+         return false;
+      return !animate;
+   }
+
    // -- private --------------------------------------------------------------
 
-   private const uint FILE_SHARE_ALL             = 0x1 | 0x2 | 0x4;   // read | write | delete
+   private const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
+
+   [DllImport("user32.dll")]
+   [return: MarshalAs(UnmanagedType.Bool)]
+   private static extern bool SystemParametersInfoW(uint action, uint param,
+      [MarshalAs(UnmanagedType.Bool)] ref bool value, uint winIni);
+
+   private const uint FILE_SHARE_ALL            = 0x1 | 0x2 | 0x4;   // read | write | delete
    private const uint OPEN_EXISTING              = 3;
    private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;        // required to open directories
 
