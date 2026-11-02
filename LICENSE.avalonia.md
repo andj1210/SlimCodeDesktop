@@ -3,7 +3,7 @@
 Applies to the Avalonia UI framework packages: `Avalonia`, `Avalonia.Desktop`,
 `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter` (the code, not the font), `Avalonia.Skia`,
 `Avalonia.HarfBuzz`, `Avalonia.Win32`, `Avalonia.X11`, `Avalonia.FreeDesktop`,
-`Avalonia.FreeDesktop.AtSpi`, `Avalonia.Native`, `Avalonia.Remote.Protocol` (12.0.2).
+`Avalonia.FreeDesktop.AtSpi`, `Avalonia.Native`, `Avalonia.Remote.Protocol` (12.1.5).
 
 Source: https://github.com/AvaloniaUI/Avalonia
 

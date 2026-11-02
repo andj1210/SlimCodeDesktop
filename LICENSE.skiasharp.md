@@ -1,6 +1,6 @@
 # SkiaSharp / HarfBuzzSharp -- License (MIT)
 
-Applies to the managed `SkiaSharp` (3.119.4-preview.1.1) and `HarfBuzzSharp` (8.3.1.3)
+Applies to the managed `SkiaSharp` (4.154.0) and `HarfBuzzSharp` (8.3.1.3)
 packages and their `*.NativeAssets.*` packages.
 
 The native libraries (`libSkiaSharp`, `libHarfBuzzSharp`) are built from Google Skia,

@@ -235,7 +235,7 @@ consider suggestions-only (no squiggles) as a cheap first stage.
   `SelectableTextBlock` — which supports `Inlines`, so highlighting is "emit
   colored `Run`s instead of one string". No structural change needed.
 - **TextMateSharp / AvaloniaEdit route:** full grammar fidelity, but AvaloniaEdit
-  targets Avalonia 11 and we are on **Avalonia 12.0.2** — likely no compatible
+  targets Avalonia 11 and we are on **Avalonia 12.1.5** — likely no compatible
   release yet. Re-check compatibility before considering this route.
 - **Hand-rolled tokenizer route (preferred):** keywords / strings / comments /
   numbers for the languages that matter here (C#, C/C++, JSON, XML/AXAML,

@@ -14,14 +14,14 @@ licenses that are compatible with GPL-3.0. Each linked file holds the full licen
 
 | Component | Version | License | Shipped in | License file |
 |---|---|---|---|---|
-| Avalonia (UI framework, all `Avalonia.*` packages) | 12.0.2 | MIT | all builds | [LICENSE.avalonia.md](LICENSE.avalonia.md) |
-| Inter typeface (embedded in `Avalonia.Fonts.Inter`) | 12.0.2 | OFL-1.1 | all builds | [LICENSE.inter.md](LICENSE.inter.md) |
-| ANGLE (`Avalonia.Angle.Windows.Natives`) | 2.1.25547.20250602 | BSD-3-Clause | Windows builds | [LICENSE.angle.md](LICENSE.angle.md) |
-| SkiaSharp, HarfBuzzSharp (managed bindings) | 3.119.4-preview.1.1 / 8.3.1.3 | MIT | all builds | [LICENSE.skiasharp.md](LICENSE.skiasharp.md) |
+| Avalonia (UI framework, all `Avalonia.*` packages) | 12.1.5 | MIT | all builds | [LICENSE.avalonia.md](LICENSE.avalonia.md) |
+| Inter typeface (embedded in `Avalonia.Fonts.Inter`) | 12.1.5 | OFL-1.1 | all builds | [LICENSE.inter.md](LICENSE.inter.md) |
+| ANGLE (`Avalonia.Angle.Windows.Natives`) | 2.1.27548.20260419 | BSD-3-Clause | Windows builds | [LICENSE.angle.md](LICENSE.angle.md) |
+| SkiaSharp, HarfBuzzSharp (managed bindings) | 4.154.0 / 8.3.1.3 | MIT | all builds | [LICENSE.skiasharp.md](LICENSE.skiasharp.md) |
 | libSkiaSharp, libHarfBuzzSharp (native: Skia, HarfBuzz, FreeType, libpng, ...) | as above | BSD-3-Clause, Old MIT, others | all builds | [LICENSE.skiasharp-native.md](LICENSE.skiasharp-native.md) |
 | Markdig | 0.41.3 | BSD-2-Clause | all builds | [LICENSE.markdig.md](LICENSE.markdig.md) |
-| MicroCom.Runtime | 0.11.4 | MIT | all builds | [LICENSE.microcom.md](LICENSE.microcom.md) |
-| Tmds.DBus.Protocol | 0.92.0 | MIT | all builds (used on Linux) | [LICENSE.tmds-dbus.md](LICENSE.tmds-dbus.md) |
+| MicroCom.Runtime | 0.11.6 | MIT | all builds | [LICENSE.microcom.md](LICENSE.microcom.md) |
+| Tmds.DBus.Protocol | 0.94.1 | MIT | all builds (used on Linux) | [LICENSE.tmds-dbus.md](LICENSE.tmds-dbus.md) |
 | .NET Runtime and app host | 10.0.10 | MIT | runtime: self-contained builds; host: all builds | [LICENSE.dotnet.md](LICENSE.dotnet.md) |
 | .NET Runtime third-party code | 10.0.10 | various | self-contained builds | [LICENSE.dotnet-third-party.md](LICENSE.dotnet-third-party.md) |
 

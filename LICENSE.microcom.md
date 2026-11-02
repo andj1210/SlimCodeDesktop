@@ -1,6 +1,6 @@
 # MicroCom.Runtime -- License (MIT)
 
-Applies to the `MicroCom.Runtime` package (0.11.4), a dependency of Avalonia.
+Applies to the `MicroCom.Runtime` package (0.11.6), a dependency of Avalonia.
 
 Source: https://github.com/kekekeks/MicroCom
 

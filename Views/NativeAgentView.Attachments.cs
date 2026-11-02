@@ -13,6 +13,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using SlimCodeDesktop.Themes;
@@ -187,7 +188,7 @@ public partial class NativeAgentView
       try
       {
          using var ms = new MemoryStream();
-         bmp.Save(ms, null);
+         bmp.Save(ms, new PngBitmapEncoderOptions());
          if (ImageIngest.TryLoadBytes(ms.ToArray(), label, preferJpeg: false, out var image, out var error)
              && image != null)
             Attachments.Add(image);
@@ -351,7 +352,7 @@ public partial class NativeAgentView
          try
          {
             using var ms = new MemoryStream();
-            bmp.Save(ms, null);
+            bmp.Save(ms, new PngBitmapEncoderOptions());
             _cropSource = ms.ToArray();
          }
          catch

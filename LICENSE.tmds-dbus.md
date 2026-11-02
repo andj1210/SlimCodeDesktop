@@ -1,6 +1,6 @@
 # Tmds.DBus.Protocol -- License (MIT)
 
-Applies to the `Tmds.DBus.Protocol` package (0.92.0), a dependency of Avalonia on Linux.
+Applies to the `Tmds.DBus.Protocol` package (0.94.1), a dependency of Avalonia on Linux.
 
 Source: https://github.com/tmds/Tmds.DBus
 

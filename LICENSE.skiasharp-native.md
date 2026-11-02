@@ -1,7 +1,7 @@
 # SkiaSharp / HarfBuzzSharp native libraries -- Third-party notices
 
-Verbatim copy of `External-Dependency-Info.txt` from SkiaSharp tag `v3.119.4-preview.1.1`:
-https://github.com/mono/SkiaSharp/blob/v3.119.4-preview.1.1/External-Dependency-Info.txt
+Verbatim copy of `External-Dependency-Info.txt` from SkiaSharp tag `v4.154.0`:
+https://github.com/mono/SkiaSharp/blob/v4.154.0/External-Dependency-Info.txt
 
 It covers the code compiled into `libSkiaSharp` and `libHarfBuzzSharp`, including Skia
 (BSD-3-Clause) and HarfBuzz (Old MIT).

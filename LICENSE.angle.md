@@ -1,7 +1,7 @@
 # ANGLE -- License (BSD-3-Clause)
 
 Applies to `av_libglesv2.dll` from the `Avalonia.Angle.Windows.Natives` package
-(2.1.25547.20250602). Shipped in the Windows builds only.
+(2.1.27548.20260419). Shipped in the Windows builds only.
 
 Source: https://chromium.googlesource.com/angle/angle
 
