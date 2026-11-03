@@ -229,6 +229,7 @@ public sealed class ToolCallGroupCard : TranscriptItem
       "start_write_subagent" => 3,
       "read_file"  => 1,
       "read_image" => 1,
+      "read_pdf"   => 1,
       "list_dir"   => 1,
       _            => 0,
    };

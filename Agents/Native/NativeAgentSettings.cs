@@ -164,6 +164,7 @@ public sealed class NativeAgentSettings : ISettingsMigration
       "\n" +
       "  read_file, list_dir, glob, grep  - read-only inspection\n" +
       "  read_image                       - look at an image file (screenshot, diagram)\n" +
+      "  read_pdf                         - read a PDF: outline, search, text, page images\n" +
       "  write_file, edit_file            - create or modify files\n" +
       "  move_file, delete_file           - move/rename or delete files and directories\n" +
       "  copy_file                        - copy files and directories\n" +
@@ -249,6 +250,7 @@ public sealed class NativeAgentSettings : ISettingsMigration
                    "\n" +
                    "  read_file, list_dir, glob, grep  - read-only inspection\n" +
                    "  read_image                       - look at an image file\n" +
+                   "  read_pdf                         - read a PDF file\n" +
                    "  write_file, edit_file            - create or modify files\n" +
                    "  move_file, delete_file           - move/rename or delete files\n" +
                    "  copy_file                        - copy files and directories\n" +
@@ -281,7 +283,7 @@ public sealed class NativeAgentSettings : ISettingsMigration
          sb.Append(projectPath);
          sb.Append("). You have inspection tools only:\n" +
                    "\n" +
-                   "  read_file, list_dir, glob, grep, read_image\n" +
+                   "  read_file, list_dir, glob, grep, read_image, read_pdf\n" +
                    "\n" +
                    "You cannot modify files, run commands, or ask questions — work with " +
                    "exactly the task you were given. Investigate autonomously and " +

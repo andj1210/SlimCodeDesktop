@@ -181,7 +181,7 @@ public sealed class ToolCallCard : TranscriptItem
          SetExpanded(false);
       };
 
-      // Images the call handed the model (read_image). Outside the body so
+      // Images the call handed the model (read_image, read_pdf). Outside the body so
       // they stay visible on a collapsed card: what the model looked at is
       // the point of the call.
       _imagesHost = new ContentControl
@@ -224,6 +224,7 @@ public sealed class ToolCallCard : TranscriptItem
    {
       "read_file" => s_green,
       "read_image"=> s_green,
+      "read_pdf"  => s_green,
       "list_dir"  => s_green,
       "glob"      => s_cyan,
       "grep"      => s_cyan,

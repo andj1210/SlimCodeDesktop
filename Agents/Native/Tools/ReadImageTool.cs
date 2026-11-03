@@ -76,6 +76,8 @@ public sealed class ReadImageTool : ITool
       var abs = res.FullPath;
       if (!File.Exists(abs))
          return Task.FromResult(ToolResult.Error("file not found: " + rel));
+      if (string.Equals(Path.GetExtension(abs), ".pdf", StringComparison.OrdinalIgnoreCase))
+         return Task.FromResult(ToolResult.Error("this is a PDF; use read_pdf"));
       if (!ImageIngest.IsSupportedFile(abs))
          return Task.FromResult(ToolResult.Error(
             "not a supported image type (" + string.Join(", ", ImageIngest.SUPPORTED_EXTENSIONS) +
@@ -211,14 +213,14 @@ public sealed class ReadImageTool : ITool
    private const string MODE_INFO = "info";
 
    /// <summary>Floor for max_pixels: below this nothing is legible anyway.</summary>
-   private const long MIN_PIXELS = 16_384;
+   internal const long MIN_PIXELS = 16_384;
 
    /// <summary>
    /// Ceiling for max_pixels. Every image stays in history for the rest of the
    /// session, so this bounds what one call can add to the context; vision
    /// encoders rarely resolve more detail than this anyway.
    /// </summary>
-   private const long MAX_PIXELS_CAP = 2_000_000;
+   internal const long MAX_PIXELS_CAP = 2_000_000;
 
    private const string SCHEMA = """
    {

@@ -147,6 +147,9 @@ The online application update check in the about page happens only on the user's
   This needs a vision-capable model, e.g. `llama-server` with `--mmproj`.
   Enable/Disable via **Configuration → Application → Clipboard wizard**.
   Drop or paste images into the prompt works as well.
+- **PDFs**: the model can read PDF files in the project with `read_pdf`: outline
+  and metadata, search, text, and pages as images with re-rendered crops. Text
+  works on any model; page images need a vision-capable one.
 - **Markdown rendering** with GFM task lists, tables and LaTeX math.
 - **F11** toggles full screen.
 

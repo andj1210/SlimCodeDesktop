@@ -51,6 +51,7 @@ public sealed class ToolRegistry
       var r = new ToolRegistry();
       r.Register(new ReadFileTool());
       r.Register(new ReadImageTool());
+      r.Register(new ReadPdfTool());
       r.Register(new ListDirTool());
       r.Register(new GlobTool());
       r.Register(new GrepTool());

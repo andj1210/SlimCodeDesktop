@@ -80,13 +80,17 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Markdig" Version="0.41.3" />
+    <PackageReference Include="PdfPig" Version="0.1.16" />
+    <PackageReference Include="PDFtoImage" Version="5.4.0" />
     <PackageReference Include="SkiaSharp" Version="4.154.0" />
     <!--
       Newer than the 3.119.4 Avalonia.Skia is built against. SkiaSharp 4 brings
       its Win32 and macOS natives along, but Avalonia.Skia names the Linux one
       itself: without this reference a Linux build ships the 4.x managed library
-      with the 3.x native one. Keep the two versions equal.
+      with the 3.x native one. PDFtoImage drags in the NoDependencies variant,
+      which supplies the same libSkiaSharp.so. Keep all three versions equal.
     -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
   </ItemGroup>
 </Project>

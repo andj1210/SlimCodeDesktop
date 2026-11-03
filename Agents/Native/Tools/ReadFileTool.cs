@@ -41,6 +41,8 @@ public sealed class ReadFileTool : ITool
       var abs = res.FullPath;
       if (!File.Exists(abs))
          return Task.FromResult(ToolResult.Error("file not found: " + rel));
+      if (string.Equals(Path.GetExtension(abs), ".pdf", StringComparison.OrdinalIgnoreCase))
+         return Task.FromResult(ToolResult.Error("this is a PDF; use read_pdf"));
 
       int offset = args.TryGetProperty("offset", out var o) && o.ValueKind == JsonValueKind.Number
                    ? Math.Max(1, o.GetInt32()) : 1;

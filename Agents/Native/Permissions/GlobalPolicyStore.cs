@@ -95,6 +95,7 @@ public sealed class GlobalPolicyStore
       // ("global policy: Allow" reads better than "default: Allow").
       p.Set("read_file",  PermissionDecision.Allow);
       p.Set("read_image", PermissionDecision.Allow);
+      p.Set("read_pdf",   PermissionDecision.Allow);
       p.Set("list_dir",   PermissionDecision.Allow);
       p.Set("glob",       PermissionDecision.Allow);
       p.Set("grep",       PermissionDecision.Allow);

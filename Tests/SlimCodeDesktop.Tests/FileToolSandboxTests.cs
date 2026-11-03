@@ -127,6 +127,39 @@ public sealed class FileToolSandboxTests : IDisposable
       Assert.Contains("1×1 source pixels", res.Content);
    }
 
+   // -- read_pdf -------------------------------------------------------------
+
+   [Theory]
+   [InlineData("secret/key.pdf")]
+   [InlineData("link/leak.pdf")]
+   [InlineData("../outside/leak.pdf")]
+   public async Task ReadPdf_Denied(string path)
+   {
+      _WritePdfs();
+
+      foreach (var mode in new[] { "info", "text", "search", "view" })
+      {
+         var res = await _Run(new ReadPdfTool(), new { path, mode, query = "Cover" });
+
+         _AssertDenied(res);
+         Assert.DoesNotContain("Cover", res.Content);
+      }
+   }
+
+   [Theory]
+   [InlineData("docs/a.pdf")]         // ReadOnly still reads
+   [InlineData("vault/inner/v.pdf")]
+   [InlineData("src/a.pdf")]
+   public async Task ReadPdf_Allowed(string path)
+   {
+      _WritePdfs();
+
+      var res = await _Run(new ReadPdfTool(), new { path, mode = "text" });
+
+      Assert.False(res.IsError, res.Content);
+      Assert.Contains("Cover", res.Content);
+   }
+
    // -- write_file -----------------------------------------------------------
 
    [Theory]
@@ -394,6 +427,15 @@ public sealed class FileToolSandboxTests : IDisposable
       File.WriteAllBytes(Path.Combine(_tree.Outside, "leak.png"), png);
    }
 
+   /// <summary>A small PDF next to each text file, for the same reason.</summary>
+   private void _WritePdfs()
+   {
+      var pdf = TestPdf.Sample();
+      foreach (var rel in new[] { "src/a.pdf", "docs/a.pdf", "secret/key.pdf", "vault/inner/v.pdf" })
+         File.WriteAllBytes(_tree.InProject(rel), pdf);
+      File.WriteAllBytes(Path.Combine(_tree.Outside, "leak.pdf"), pdf);
+   }
+
    private static void _AssertDenied(ToolResult res)
    {
       Assert.True(res.IsError, "expected a denial, got: " + res.Content);
@@ -470,7 +512,7 @@ public sealed class FileToolSandboxTests : IDisposable
    {
       typeof(ReadFileTool), typeof(WriteFileTool), typeof(EditFileTool), typeof(DeleteFileTool),
       typeof(MoveFileTool), typeof(ListDirTool),   typeof(GlobTool),     typeof(GrepTool),
-      typeof(CopyFileTool), typeof(ReadImageTool),
+      typeof(CopyFileTool), typeof(ReadImageTool), typeof(ReadPdfTool),
    };
 
    private static readonly HashSet<string> s_pathArgs = new(StringComparer.OrdinalIgnoreCase)

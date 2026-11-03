@@ -142,10 +142,30 @@ public static class ImageIngest
          using var scaled = _Downscale(full, maxPixels);
          var source = scaled ?? full;
 
+         return TryEncode(source, fileName, preferJpeg, out image, out error);
+      }
+      catch (Exception ex)
+      {
+         error = ex.Message;
+         return false;
+      }
+   }
+
+   /// <summary>
+   /// Encode a bitmap as it stands, with no crop or downscale. For sources that
+   /// were rendered at the right size to begin with (read_pdf).
+   /// </summary>
+   public static bool TryEncode(SKBitmap bitmap, string? fileName, bool preferJpeg,
+                                out ImagePart? image, out string? error)
+   {
+      image = null;
+      error = null;
+      try
+      {
          var format  = preferJpeg ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png;
          int quality = preferJpeg ? JPEG_QUALITY : 100;
 
-         using var skImage = SKImage.FromBitmap(source);
+         using var skImage = SKImage.FromBitmap(bitmap);
          using var data    = skImage?.Encode(format, quality);
          if (data == null)
          {
@@ -157,8 +177,8 @@ public static class ImageIngest
          {
             MediaType = preferJpeg ? "image/jpeg" : "image/png",
             Base64    = Convert.ToBase64String(data.ToArray()),
-            Width     = source.Width,
-            Height    = source.Height,
+            Width     = bitmap.Width,
+            Height    = bitmap.Height,
             FileName  = fileName,
          };
          return true;
