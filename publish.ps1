@@ -138,6 +138,9 @@ function Invoke-PublishArchive {
     # components require their notices to accompany binary redistribution.
     Copy-Item -Path (Join-Path $PSScriptRoot "LICENSE*.md") -Destination $publishDir -Force
 
+    # Ship this release's notes as well (also the GitHub release body).
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "WhatsNew.md") -Destination $publishDir -Force
+
     # tar.gz for Linux (what the platform expects), zip for Windows.
     if ($TargetOS -eq "Linux") { $ext = "tar.gz" } else { $ext = "zip" }
     $archiveName = "slimcode_desktop_v${version}_${Runtime}.${ext}"

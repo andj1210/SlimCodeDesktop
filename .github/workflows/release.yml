@@ -15,8 +15,11 @@
 # workflow (from dev or main). A run whose tag or release already exists fails
 # before anything is built.
 #
+# Release notes come from WhatsNew.md (this release only, rewritten each time).
+# Its first "## " heading must be "## v{version}"; the run fails otherwise.
+#
 # Jobs:
-#   prepare      -- ref guard, dev/main ancestry check, version, duplicate check
+#   prepare      -- ref guard, dev/main ancestry check, version, notes, duplicate check
 #   build        -- Windows runner: publish.bat (Windows tests + all archives)
 #   test-linux   -- Ubuntu runner: the Linux unit tests a Windows host can't run
 #   release      -- Ubuntu runner: exec bit, checksums, fast-forward main, release
@@ -98,6 +101,27 @@ jobs:
           $version = $version.Trim()
           Write-Host "Version: $version"
           "version=$version" >> $env:GITHUB_OUTPUT
+
+      # WhatsNew.md holds this release's notes and becomes the release body.
+      # Its first heading must name this version, so stale notes from the
+      # previous release stop the run before anything is built.
+      - name: Check WhatsNew.md matches the version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ ! -s WhatsNew.md ]; then
+            echo "::error::WhatsNew.md is missing or empty -- write this release's notes."
+            exit 1
+          fi
+          heading="$(grep -m1 -E '^## ' WhatsNew.md | tr -d '\r' | sed -E 's/[[:space:]]+$//')"
+          if [ "$heading" != "## v$VERSION" ]; then
+            echo "::error::WhatsNew.md starts with '${heading:-<no ## heading>}', expected '## v$VERSION' -- update the notes for this release."
+            exit 1
+          fi
+          if ! grep -qE '^[[:space:]]*[-*] ' WhatsNew.md; then
+            echo "::error::WhatsNew.md has no list entries -- add the highlights."
+            exit 1
+          fi
 
       # Drafts have no git tag yet, so check the release list as well as tags.
       - name: Refuse an existing tag or release
@@ -218,6 +242,15 @@ jobs:
             exit 1
           fi
 
+      # Only the release notes are needed from the source tree.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: src
+          sparse-checkout: WhatsNew.md
+          sparse-checkout-cone-mode: false
+
+      # WhatsNew.md comes first; GitHub's generated list of changes follows it.
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -231,5 +264,6 @@ jobs:
           gh release create "v${VERSION}" dist/* \
             --target "$SHA" \
             --title "SlimCode Desktop v${VERSION}" \
+            --notes-file src/WhatsNew.md \
             --generate-notes \
             "${flags[@]}"
